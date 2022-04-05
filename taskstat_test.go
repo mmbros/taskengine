@@ -11,7 +11,7 @@ func (statmap taskStatMap) String() string {
 	b.WriteString("[\n")
 	for tid, ti := range statmap {
 		fmt.Fprintf(&b, " %s: todo=%d, doing=%d, done=%d, success=%d\n",
-			tid, ti.todo, ti.doing, ti.done, ti.success)
+			tid, ti.Todo, ti.Doing, ti.Done, ti.Success)
 	}
 	b.WriteString("]")
 	return b.String()
@@ -43,9 +43,9 @@ func TestPick(t *testing.T) {
 	}
 
 	statmap123 := taskStatMap{
-		"t1": &taskStat{1, 0, 0, 0},
-		"t2": &taskStat{2, 0, 0, 0},
-		"t3": &taskStat{3, 0, 0, 0},
+		"t1": &TaskStat{1, 0, 0, 0},
+		"t2": &TaskStat{2, 0, 0, 0},
+		"t3": &TaskStat{3, 0, 0, 0},
 	}
 
 	testCases := map[string]testCase{
@@ -81,36 +81,36 @@ func TestPick(t *testing.T) {
 		// },
 		"done with success": {
 			statmap: taskStatMap{
-				"t1": &taskStat{1, 0, 1, 1},
-				"t2": &taskStat{2, 0, 0, 0},
-				"t3": &taskStat{3, 0, 0, 0},
+				"t1": &TaskStat{1, 0, 1, 1},
+				"t2": &TaskStat{2, 0, 0, 0},
+				"t3": &TaskStat{3, 0, 0, 0},
 			},
 			tasks: TS("t1,t2,t3"),
 			want:  1,
 		},
 		"done with error": {
 			statmap: taskStatMap{
-				"t1": &taskStat{1, 0, 1, 0},
-				"t2": &taskStat{2, 0, 0, 0},
-				"t3": &taskStat{3, 0, 0, 0},
+				"t1": &TaskStat{1, 0, 1, 0},
+				"t2": &TaskStat{2, 0, 0, 0},
+				"t3": &TaskStat{3, 0, 0, 0},
 			},
 			tasks: TS("t1,t2,t3"),
 			want:  0,
 		},
 		"doing": {
 			statmap: taskStatMap{
-				"t1": &taskStat{1, 1, 0, 0},
-				"t2": &taskStat{2, 1, 0, 0},
-				"t3": &taskStat{3, 0, 0, 0},
+				"t1": &TaskStat{1, 1, 0, 0},
+				"t2": &TaskStat{2, 1, 0, 0},
+				"t3": &TaskStat{3, 0, 0, 0},
 			},
 			tasks: TS("t1,t2,t3"),
 			want:  2,
 		},
 		"doing success alpha": {
 			statmap: taskStatMap{
-				"t1": &taskStat{1, 1, 0, 0},
-				"t2": &taskStat{2, 1, 0, 0},
-				"t3": &taskStat{3, 0, 1, 1},
+				"t1": &TaskStat{1, 1, 0, 0},
+				"t2": &TaskStat{2, 1, 0, 0},
+				"t3": &TaskStat{3, 0, 1, 1},
 			},
 			tasks: TS("t2,t1,t3"),
 			want:  1,

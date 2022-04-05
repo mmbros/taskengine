@@ -88,7 +88,7 @@ func (rr *demoRandomResult) success() bool {
 
 func (t *demoTask) TaskID() TaskID { return TaskID(t.taskid) }
 
-func (res *demoResult) Success() bool { return res.err == nil }
+func (res *demoResult) Error() error { return res.err }
 func (res *demoResult) Status() string {
 	if res.err == nil {
 		return "SUCCESS"

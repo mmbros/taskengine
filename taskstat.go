@@ -1,15 +1,33 @@
 package taskengine
 
-// taskStat type is used to dynamically choose the next task to work
-type taskStat struct {
-	todo    int // how many workers have to do the task.
-	doing   int // how many workers are doing the task.
-	done    int // how many workers have done the task.
-	success int // how many workers have done the task with success.
+import "fmt"
+
+// TaskStat type is used to dynamically choose the next task to work
+type TaskStat struct {
+	Todo    int // how many workers have to do the task.
+	Doing   int // how many workers are doing the task.
+	Done    int // how many workers have done the task.
+	Success int // how many workers have done the task with success.
+}
+
+// func (stat *TaskStat) Todo() int    { return stat.todo }
+// func (stat *TaskStat) Doing() int   { return stat.doing }
+// func (stat *TaskStat) Done() int    { return stat.done }
+// func (stat *TaskStat) Success() int { return stat.success }
+
+// Completed returns if no worker has to do or is doing the task.
+func (stat *TaskStat) Completed() bool {
+	return (stat.Todo == 0) && (stat.Doing == 0)
+}
+
+// Completed returns if no worker has to do or is doing the task.
+func (stat TaskStat) String() string {
+	return fmt.Sprintf("[%d %d %d(%d)]",
+		stat.Todo, stat.Doing, stat.Done, stat.Success)
 }
 
 // taskStatMap maps TaskID -> taskInfo.
-type taskStatMap map[TaskID]*taskStat
+type taskStatMap map[TaskID]*TaskStat
 
 // // total returns how many workers have assigned the task.
 // func (stat *taskStat) total() int {
@@ -20,11 +38,6 @@ type taskStatMap map[TaskID]*taskStat
 // func (stat *taskStat) error() int {
 // 	return stat.done - stat.success
 // }
-
-// completed returns if no worker has to do or is doing the task.
-func (stat *taskStat) completed() bool {
-	return (stat.todo == 0) && (stat.doing == 0)
-}
 
 // newTaskStatusMap init a new taskInfoMap from WorkerTasks.
 func newTaskStatusMap(widtasks WorkerTasks) taskStatMap {
@@ -41,7 +54,7 @@ func newTaskStatusMap(widtasks WorkerTasks) taskStatMap {
 // no worker has to do or is doing some task.
 func (statmap taskStatMap) completed() bool {
 	for _, stat := range statmap {
-		if !stat.completed() {
+		if !stat.Completed() {
 			return false
 		}
 	}
@@ -52,18 +65,18 @@ func (statmap taskStatMap) completed() bool {
 func (statmap taskStatMap) todo(tid TaskID) {
 	stat := statmap[tid]
 	if stat == nil {
-		stat = &taskStat{}
+		stat = &TaskStat{}
 		statmap[tid] = stat
 	}
-	stat.todo++
+	stat.Todo++
 }
 
 // doing decrements the todo number and increments the doing number.
 // WARN: it doesn't check task exists and todo>0.
 func (statmap taskStatMap) doing(tid TaskID) {
 	stat := statmap[tid]
-	stat.todo--
-	stat.doing++
+	stat.Todo--
+	stat.Doing++
 }
 
 // done decrements the doing number and increments the done number.
@@ -71,10 +84,10 @@ func (statmap taskStatMap) doing(tid TaskID) {
 // WARN: it doesn't check task exists and doing>0.
 func (statmap taskStatMap) done(tid TaskID, success bool) {
 	stat := statmap[tid]
-	stat.doing--
-	stat.done++
+	stat.Doing--
+	stat.Done++
 	if success {
-		stat.success++
+		stat.Success++
 	}
 }
 
@@ -95,18 +108,18 @@ func (statmap taskStatMap) pick(ts Tasks) int {
 	for j := 1; j < L; j++ {
 		s := statmap[ts[j].TaskID()]
 
-		if s.success > s0.success {
+		if s.Success > s0.Success {
 			// prefer task with fewer success
 			continue
-		} else if s.success == s0.success {
-			if s.doing > s0.doing {
+		} else if s.Success == s0.Success {
+			if s.Doing > s0.Doing {
 				// else prefer task with fewer doing
 				continue
-			} else if s.doing == s0.doing {
-				if s.todo > s0.todo {
+			} else if s.Doing == s0.Doing {
+				if s.Todo > s0.Todo {
 					// else prefer task with fewer todo
 					continue
-				} else if s.todo == s0.todo {
+				} else if s.Todo == s0.Todo {
 					// else prefer task with lower TaskID
 					// needed to be deterministic
 					tid0 := ts[j0].TaskID()

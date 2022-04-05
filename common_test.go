@@ -62,7 +62,8 @@ func (t *testCaseTask) TaskID() TaskID                 { return TaskID(t.taskid)
 func (t *testCaseTask) Equal(other *testCaseTask) bool { return t.taskid == other.taskid }
 func (t *testCaseTask) String() string                 { return string(t.taskid) }
 
-func (res *testResult) Success() bool { return res.err == nil }
+// func (res *testResult) Success() bool { return res.err == nil }
+func (res *testResult) Error() error { return res.err }
 func (res *testResult) Status() string {
 	if res.err == nil {
 		return "SUCCESS"
@@ -73,7 +74,7 @@ func (res *testResult) ToTestCaseResult() *testCaseResult {
 	return &testCaseResult{
 		taskid:   res.taskid,
 		workerid: res.workerid,
-		success:  res.Success(),
+		success:  res.Error() == nil,
 	}
 }
 
@@ -136,7 +137,7 @@ func workFn(ctx context.Context, workerInst int, task Task) Result {
 	}
 
 	// ttask.t.Logf("WORKING:   (%s, %s, %d)", ttask.workerid, ttask.taskid, ttask.iter)
-	ttask.t.Logf("WORKING:   (%s, %s)", ttask.workerid, ttask.taskid)
+	// ttask.t.Logf("WORKING:   (%s, %s)", ttask.workerid, ttask.taskid)
 
 	select {
 	case <-ctx.Done():
@@ -148,7 +149,7 @@ func workFn(ctx context.Context, workerInst int, task Task) Result {
 	}
 
 	// ttask.t.Logf("WORKED: (%s, %s, %d) -> %s", ttask.workerid, ttask.taskid, ttask.iter, tres.Status())
-	ttask.t.Logf("WORKED: (%s, %s) -> %s", ttask.workerid, ttask.taskid, tres.Status())
+	// ttask.t.Logf("WORKED: (%s, %s) -> %s", ttask.workerid, ttask.taskid, tres.Status())
 
 	return Result(tres)
 }
