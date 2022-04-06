@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 // testingTask is used to define a task in the test cases.
@@ -76,47 +77,60 @@ type testingEvent struct {
 
 type testingEventsGroup []testingEvent
 
-func testingEventsDiff(want []testingEventsGroup, got []Event) string {
+// testingEventsDiff checks if the given events matched the expected events group list.
+// The events of the same group can occur in any order.
+// If group A is before group B, all the events of group A must precede the events of group B.
+// Example:
+//     the groups list
+//           1|2 3|4 5 6
+//     is matched by the events
+//           1 2 3 4 5 6
+//           1 3 2 4 5 6
+//           1 3 2 6 4 5
+//     but not by
+//           1 2 4 3 5 6
+func testingEventsDiff(want []testingEventsGroup, events []Event) string {
 
-	for _, event := range got {
-
-		teGot := testingEvent{
+	// convert []Event to []testingEvent
+	got := []testingEvent{}
+	for _, event := range events {
+		te := testingEvent{
 			Wid:   string(event.Worker.WorkerID),
 			Tid:   string(event.Task.TaskID()),
 			Etype: event.Type(),
 		}
-
-		// check exists a testingEvent group
-		if len(want) == 0 {
-			return cmp.Diff(nil, teGot, nil)
-		}
-		want0 := want[0]
-
-		// check if event is in the first testingEvent group
-		found := -1
-		for i, te := range want0 {
-			if cmp.Diff(te, teGot, nil) == "" {
-				found = i
-				break
-			}
-		}
-		if found < 0 {
-			// event is not found in testingEvent group
-			return cmp.Diff(want0, testingEventsGroup{teGot}, nil)
-		}
-
-		if len(want0) == 1 {
-			// the first group has no more elements
-			want = want[1:]
-		} else {
-			// remove the idx-nth element from the first group
-			want0 = append(want0[:found], want0[found+1:]...)
-			want[0] = want0
-		}
-
+		got = append(got, te)
 	}
-	if len(want) > 0 {
-		return cmp.Diff(want, nil, nil)
+
+	// lessFunc for testingEvent
+	lessFunc := func(x, y testingEvent) bool {
+		return (x.Wid < y.Wid) ||
+			((x.Wid == y.Wid) && (x.Tid < y.Tid)) ||
+			((x.Wid == y.Wid) && (x.Tid == y.Tid) && (x.Etype < y.Etype))
+	}
+	copts := cmp.Options{cmpopts.SortSlices(lessFunc)}
+
+	// compare each wantGroup with the corrisponding gotGroup
+	// The gotGroup contains the same number of element of the wantGroup (if possible)
+	// starting from the first not already used element
+	curr := 0
+	tot := len(got)
+	for _, wantGroup := range want {
+		L := len(wantGroup)
+		if curr+L > tot {
+			L = tot - curr
+		}
+
+		gotGroup := testingEventsGroup(got[curr : curr+L])
+		if diff := cmp.Diff(wantGroup, gotGroup, copts); diff != "" {
+			return diff
+		}
+		curr += L
+	}
+	if curr < tot {
+		wantGroup := testingEventsGroup(nil)
+		gotGroup := testingEventsGroup(got[curr:])
+		return cmp.Diff(wantGroup, gotGroup, copts)
 	}
 
 	return ""
