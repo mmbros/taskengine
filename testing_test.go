@@ -27,6 +27,15 @@ type testingResult struct {
 
 func (tr testingResult) Error() error { return tr.err }
 
+// event's informations that will be checked
+type testingEvent struct {
+	Wid   string
+	Tid   string
+	Etype EventType
+}
+
+type testingEventsGroup []testingEvent
+
 func testingWorkFn(ctx context.Context, workerInst int, task Task) Result {
 	t := task.(testingTask)
 	r := &testResult{}
@@ -67,15 +76,6 @@ func testingWorkerTasks(wts map[string]testingTasks) WorkerTasks {
 	}
 	return wtasks
 }
-
-// event's informations that will be checked
-type testingEvent struct {
-	Wid   string
-	Tid   string
-	Etype EventType
-}
-
-type testingEventsGroup []testingEvent
 
 // testingEventsDiff checks if the given events matched the expected events group list.
 // The events of the same group can occur in any order.

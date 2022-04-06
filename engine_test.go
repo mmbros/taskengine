@@ -9,18 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-func Test2ExecuteNilEngine(t *testing.T) {
-	var eng *engine
-	errmsg := "nil engine"
-	_, err := eng.Execute(All)
-	if err == nil {
-		t.Errorf("expecting error, got no error")
-	} else if err.Error() != errmsg {
-		t.Errorf("expecting error %q, got error %q", errmsg, err)
-	}
-}
-
-func Test1NewEngineNilContext(t *testing.T) {
+func TestNewEngineNilContext(t *testing.T) {
 	var ctx context.Context
 	_, err := newEngine(ctx, nil, nil)
 	if err == nil {
@@ -33,7 +22,7 @@ func Test1NewEngineNilContext(t *testing.T) {
 	}
 }
 
-func Test1NewEngine(t *testing.T) {
+func TestNewEngine(t *testing.T) {
 
 	type testCase struct {
 		workers []*Worker
@@ -113,7 +102,18 @@ func Test1NewEngine(t *testing.T) {
 	}
 }
 
-func TestExecute3FirstSuccessOrLastError(t *testing.T) {
+func TestExecuteNilEngine(t *testing.T) {
+	var eng *engine
+	errmsg := "nil engine"
+	_, err := eng.Execute(All)
+	if err == nil {
+		t.Errorf("expecting error, got no error")
+	} else if err.Error() != errmsg {
+		t.Errorf("expecting error %q, got error %q", errmsg, err)
+	}
+}
+
+func TestExecuteFirstSuccessOrLastError(t *testing.T) {
 	workers := []*Worker{
 		{"w1", 1, workFn},
 		{"w2", 1, workFn},
@@ -261,7 +261,7 @@ func TestExecute3FirstSuccessOrLastError(t *testing.T) {
 
 }
 
-func Test3ExecuteUntilFirstSuccess(t *testing.T) {
+func TestExecuteUntilFirstSuccess(t *testing.T) {
 	workers := []*Worker{
 		{"w1", 1, workFn},
 		{"w2", 1, workFn},
@@ -352,7 +352,7 @@ func Test3ExecuteUntilFirstSuccess(t *testing.T) {
 	}
 }
 
-func TestExecute3All(t *testing.T) {
+func TestExecuteAll(t *testing.T) {
 	workers := []*Worker{
 		{"w1", 1, workFn},
 		{"w2", 1, workFn},

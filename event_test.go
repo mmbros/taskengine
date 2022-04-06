@@ -120,7 +120,7 @@ func TestEvents(t *testing.T) {
 				t.Errorf("newEngine: unexpected error: %s", err)
 			}
 
-			eventc, err := eng.ExecuteEvent(All)
+			eventc, err := eng.ExecuteEvent()
 			if err != nil {
 				t.Errorf("ExecuteEvent: unexpected error: %s", err)
 			}

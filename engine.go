@@ -131,214 +131,59 @@ func newEngine(ctx context.Context, ws []*Worker, wts WorkerTasks) (*engine, err
 	}, nil
 }
 
-// String representation of jobOutput object.
-// Only for debug pourposes.
-// TODO: do not compile in production code!
-// func (o *jobOutput) String() string {
-// 	var b strings.Builder
-
-// 	b.WriteString("jobOutput{")
-// 	if o == nil {
-// 		b.WriteString("<nil>")
-// 	} else {
-// 		fmt.Fprintf(&b, "wid=%s, inst=%d, ", o.wid, o.instance)
-// 		if o.res == nil {
-// 			fmt.Fprint(&b, "res=<nil>")
-// 		} else {
-// 			fmt.Fprintf(&b, "tid=%s, success=%v", o.task.TaskID(), o.res.Success())
-// 		}
-// 	}
-// 	b.WriteString("}")
-// 	return b.String()
-// }
-
 // Execute returns a chan that receives the Results of the workers for the input Requests.
 func (eng *engine) Execute(mode Mode) (chan Result, error) {
 
-	if eng == nil {
-		return nil, fmt.Errorf("nil engine")
+	eventchan, err := eng.ExecuteEvent()
+	if err != nil {
+		return nil, err
 	}
+	resultchan := make(chan Result)
 
-	// creates the Result channel
-	resultc := make(chan Result)
+	// goroutine that read input from the event chan
+	// write output to the result chan.
+	go func(eventc chan Event, resultc chan Result) {
+		for e := range eventc {
 
-	// creates the *jobOutput channel
-	outputc := make(chan *jobOutput)
+			etype := e.Type()
 
-	// creates the *jobInput chan of each worker
-	inputc := map[WorkerID](chan *jobInput){}
-	for wid := range eng.workers {
-		inputc[wid] = make(chan *jobInput)
-	}
-
-	// creates each task context
-	taskctx := map[TaskID]context.Context{}
-	taskcancel := map[TaskID]context.CancelFunc{}
-	for _, ts := range eng.widtasks {
-		for _, t := range ts {
-			tid := t.TaskID()
-			if _, ok := taskctx[tid]; !ok {
-				ctx, cancel := context.WithCancel(eng.ctx)
-				taskctx[tid] = ctx
-				taskcancel[tid] = cancel
+			if etype == EventStart {
+				continue
 			}
+
+			//  success -> Success
+			// !success -> Error | Cancel
+			success := (etype == EventSuccess)
+
+			switch mode {
+			case FirstSuccessOrLastError:
+				if (success && e.Stat.Success == 1) || (e.Stat.Completed() && e.Stat.Success == 0) {
+					// return the result if:
+					// - it is the first success, or
+					// - it is completed and no success was found
+					resultc <- e.Result
+				}
+			case UntilFirstSuccess:
+				if (success && e.Stat.Success == 1) || (!success && e.Stat.Success == 0) {
+					// return the result if:
+					// - it is the first success, or
+					// - it is not a success and no success was found
+					resultc <- e.Result
+				}
+			default:
+				resultc <- e.Result
+			}
+
 		}
-	}
-
-	// Starts the goroutines that executes the real work.
-	// For each worker it starts N goroutines, with N = Instances.
-	// Each goroutine get the input from the worker request channel,
-	// and put the output to the task result channel (contained in the request).
-	for _, worker := range eng.workersList {
-
-		// for each worker instances
-		for i := 0; i < worker.Instances; i++ {
-
-			go func(w *Worker, inst int, inputc <-chan *jobInput) {
-				for req := range inputc {
-					// get the worker result of the task
-					res := w.Work(req.ctx, inst, req.task)
-
-					// send the result to the output chan
-					jout := jobOutput{
-						wid:      w.WorkerID,
-						instance: inst,
-						res:      res,
-						task:     req.task,
-					}
-					req.outc <- &jout
-				}
-			}(worker, i, inputc[worker.WorkerID])
-		}
-	}
-
-	// each worker instances send a void output
-	// to signal it is ready to work.
-	go func() {
-		for _, w := range eng.workersList {
-			wid := w.WorkerID
-			for i := 0; i < w.Instances; i++ {
-				jout := jobOutput{
-					wid:      wid,
-					instance: i,
-					res:      nil,
-				}
-				outputc <- &jout
-			}
-		}
-	}()
-
-	go func() {
-		// clone eng.widtasks
-		widtasks := eng.widtasks.Clone()
-
-		// iter := 0
-		statusMap := newTaskStatusMap(eng.widtasks)
-
-		// for iter := 0; iter < totTasks; iter++ {
-		for !statusMap.completed() {
-
-			// iter++
-			// if iter > 100 {
-			// log.Println("MAX ITER !!!!")
-			// break
-			// }
-			// log.Printf("iter: %02d\n", iter)
-			// log.Println(tim)
-
-			// get the next output
-			o := <-outputc
-
-			// log.Println(o)
-
-			// handle result
-			if o.res != nil {
-				success := (o.res.Error() == nil)
-				tid := o.task.TaskID()
-
-				// updates task info map
-				statusMap.done(tid, success)
-				status := statusMap[tid]
-
-				if success {
-					// call cancel func for the task context
-					taskcancel[tid]()
-				}
-
-				switch mode {
-				case FirstSuccessOrLastError:
-					if (success && status.Success == 1) || (status.Completed() && status.Success == 0) {
-						// return the result if:
-						// - it is the first success, or
-						// - it is completed and no success was found
-						resultc <- o.res
-					}
-				case UntilFirstSuccess:
-					if (success && status.Success == 1) || (!success && status.Success == 0) {
-						// return the result if:
-						// - it is the first success, or
-						// - it is a error and no success was found
-						resultc <- o.res
-					}
-				default:
-					resultc <- o.res
-				}
-			}
-
-			// select the next task of the worker
-			var nexttask Task
-			{
-				ts := widtasks[o.wid]
-				n := statusMap.pick(ts)
-				if n >= 0 {
-					nexttask = ts.Remove(n)
-					widtasks[o.wid] = ts
-				}
-			}
-
-			if nexttask == nil {
-				// log.Println("nexttask = <nil>")
-
-				// close the worker chan
-				// NOTE: in case of a worker with two or more instances,
-				// the close of the channel must be called only once. Else
-				//    panic: close of closed channel
-				if ch, ok := inputc[o.wid]; ok {
-					close(ch)
-					delete(inputc, o.wid)
-				}
-
-			} else {
-				tid := nexttask.TaskID()
-
-				// updates task info map
-				statusMap.doing(tid)
-
-				// log.Printf("nexttask = %s\n", tid)
-
-				i := &jobInput{
-					ctx:    taskctx[tid],
-					cancel: taskcancel[tid],
-					task:   nexttask,
-					outc:   outputc,
-				}
-				inputc[o.wid] <- i
-			}
-		}
-
-		// log.Println("END LOOP")
-
-		// log.Println(tim)
-
-		close(outputc)
 		close(resultc)
-	}()
+	}(eventchan, resultchan)
 
-	return resultc, nil
+	return resultchan, nil
 }
 
-// Execute returns a chan that receives the Results of the workers for the input Requests.
-func (eng *engine) ExecuteEvent(mode Mode) (chan Event, error) {
+// ExecuteEvents returns a chan that receives all the Events
+// generated by the execution of the input Requests.
+func (eng *engine) ExecuteEvent() (chan Event, error) {
 
 	if eng == nil {
 		return nil, fmt.Errorf("nil engine")
@@ -346,9 +191,6 @@ func (eng *engine) ExecuteEvent(mode Mode) (chan Event, error) {
 
 	// creates the Event channel
 	eventc := make(chan Event)
-
-	// creates the Result channel
-	// resultc := make(chan Result)
 
 	// creates the *jobOutput channel
 	outputc := make(chan *jobOutput)
@@ -392,6 +234,7 @@ func (eng *engine) ExecuteEvent(mode Mode) (chan Event, error) {
 						Task:           req.task,
 						Worker:         *w,
 						Inst:           inst,
+						Result:         nil,
 						Stat:           req.stat,
 						Timestamp:      timestampStart,
 						TimestampStart: timestampStart,
@@ -416,8 +259,8 @@ func (eng *engine) ExecuteEvent(mode Mode) (chan Event, error) {
 		}
 	}
 
-	// each worker instances send a void output
-	// to signal it is ready to work.
+	// start a goroutine that, for each worker instance,
+	// send a void output to signal it is ready to work.
 	go func() {
 		for _, w := range eng.workersList {
 			wid := w.WorkerID
@@ -432,28 +275,19 @@ func (eng *engine) ExecuteEvent(mode Mode) (chan Event, error) {
 		}
 	}()
 
+	// main goroutine that handle the input and output from the workers
+	// and send the events to the event chan.
 	go func() {
 		// clone eng.widtasks
 		widtasks := eng.widtasks.Clone()
 
-		// iter := 0
+		// init the status map from the WorkerTasks object
 		statMap := newTaskStatusMap(eng.widtasks)
 
-		// for iter := 0; iter < totTasks; iter++ {
 		for !statMap.completed() {
-
-			// iter++
-			// if iter > 100 {
-			// log.Println("MAX ITER !!!!")
-			// break
-			// }
-			// log.Printf("iter: %02d\n", iter)
-			// log.Println(tim)
 
 			// get the next output
 			o := <-outputc
-
-			// log.Println(o)
 
 			// handle result
 			if o.res != nil {
@@ -479,25 +313,6 @@ func (eng *engine) ExecuteEvent(mode Mode) (chan Event, error) {
 					TimestampStart: o.TimestampStart,
 				}
 				eventc <- event
-
-				// switch mode {
-				// case FirstSuccessOrLastError:
-				// 	if (success && status.success == 1) || (status.completed() && status.success == 0) {
-				// 		// return the result if:
-				// 		// - it is the first success, or
-				// 		// - it is completed and no success was found
-				// 		resultc <- o.res
-				// 	}
-				// case UntilFirstSuccess:
-				// 	if (success && status.success == 1) || (!success && status.success == 0) {
-				// 		// return the result if:
-				// 		// - it is the first success, or
-				// 		// - it is a error and no success was found
-				// 		resultc <- o.res
-				// 	}
-				// default:
-				// 	resultc <- o.res
-				// }
 			}
 
 			// select the next task of the worker
@@ -512,12 +327,11 @@ func (eng *engine) ExecuteEvent(mode Mode) (chan Event, error) {
 			}
 
 			if nexttask == nil {
-				// log.Println("nexttask = <nil>")
-
 				// close the worker chan
 				// NOTE: in case of a worker with two or more instances,
-				// the close of the channel must be called only once. Else
-				//    panic: close of closed channel
+				// the close of the channel must be called only once.
+				// Else get the error:
+				//	  panic: close of closed channel
 				if ch, ok := inputc[o.wid]; ok {
 					close(ch)
 					delete(inputc, o.wid)
@@ -529,8 +343,7 @@ func (eng *engine) ExecuteEvent(mode Mode) (chan Event, error) {
 				// updates task info map
 				statMap.doing(tid)
 
-				// log.Printf("nexttask = %s\n", tid)
-
+				// send the job to the worker
 				i := &jobInput{
 					ctx:    taskctx[tid],
 					cancel: taskcancel[tid],
@@ -543,12 +356,7 @@ func (eng *engine) ExecuteEvent(mode Mode) (chan Event, error) {
 			}
 		}
 
-		// log.Println("END LOOP")
-
-		// log.Println(tim)
-
 		close(outputc)
-		// close(resultc)
 		close(eventc)
 	}()
 
