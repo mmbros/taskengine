@@ -166,9 +166,13 @@ func TestScenario(t *testing.T) {
 	ws, wts := scenario(t, 5, 2, 100, 90, rr)
 	ctx := context.Background()
 
-	out, err := Execute(ctx, ws, wts, All)
+	eng, err := NewEngine(ctx, ws, wts)
 	if err != nil {
-		t.Fatal(err.Error())
+		t.Fatal("NewEngine", err)
+	}
+	out, err := eng.Execute(All)
+	if err != nil {
+		t.Fatal("Execute", err)
 	}
 
 	demoResults := []*demoResult{}

@@ -114,7 +114,7 @@ func TestEvents(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			wts := testingWorkerTasks(tt.input)
-			eng, err := newEngine(ctx, tt.workers, wts)
+			eng, err := NewEngine(ctx, tt.workers, wts)
 
 			if err != nil {
 				t.Errorf("newEngine: unexpected error: %s", err)

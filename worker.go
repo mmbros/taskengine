@@ -78,23 +78,13 @@ func (wts WorkerTasks) Clone() WorkerTasks {
 	return wts2
 }
 
-// Remove removes the i-th task of the list.
+// remove removes the i-th task of the list.
 // It returns the removed task.
 // WARN: doen not check the i-th task exists!
-func (ts *Tasks) Remove(i int) Task {
+func (ts *Tasks) remove(i int) Task {
 	t := (*ts)[i]
 	L1 := len(*ts) - 1
 	(*ts)[i] = (*ts)[L1]
 	(*ts) = (*ts)[:L1]
 	return t
-}
-
-// Execute function returns a chan that receives the Results of the workers for the input Requests.
-func Execute(ctx context.Context, workers []*Worker, tasks WorkerTasks, mode Mode) (chan Result, error) {
-	eng, err := newEngine(ctx, workers, tasks)
-	if err != nil {
-		return nil, err
-	}
-
-	return eng.Execute(mode)
 }

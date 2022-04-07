@@ -11,7 +11,7 @@ import (
 
 func TestNewEngineNilContext(t *testing.T) {
 	var ctx context.Context
-	_, err := newEngine(ctx, nil, nil)
+	_, err := NewEngine(ctx, nil, nil)
 	if err == nil {
 		t.Errorf("Expecting error, got no error")
 	} else {
@@ -85,7 +85,7 @@ func TestNewEngine(t *testing.T) {
 	ctx := context.Background()
 	for title, tc := range testCases {
 		tasks := newTestWorkeridTasks(t, tc.input)
-		_, err := newEngine(ctx, tc.workers, tasks)
+		_, err := NewEngine(ctx, tc.workers, tasks)
 
 		if tc.err == nil {
 			if err != nil {
@@ -103,7 +103,7 @@ func TestNewEngine(t *testing.T) {
 }
 
 func TestExecuteNilEngine(t *testing.T) {
-	var eng *engine
+	var eng *Engine
 	errmsg := "nil engine"
 	_, err := eng.Execute(All)
 	if err == nil {
@@ -239,7 +239,7 @@ func TestExecuteFirstSuccessOrLastError(t *testing.T) {
 
 		tasks := newTestWorkeridTasks(t, tc.input)
 
-		eng, err := newEngine(ctx, workers, tasks)
+		eng, err := NewEngine(ctx, workers, tasks)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -330,7 +330,7 @@ func TestExecuteUntilFirstSuccess(t *testing.T) {
 	for title, tc := range testCases {
 		tasks := newTestWorkeridTasks(t, tc.input)
 
-		eng, err := newEngine(ctx, workers, tasks)
+		eng, err := NewEngine(ctx, workers, tasks)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -390,9 +390,13 @@ func TestExecuteAll(t *testing.T) {
 	for title, tc := range testCases {
 		tasks := newTestWorkeridTasks(t, tc.input)
 
-		out, err := Execute(ctx, workers, tasks, mode)
+		eng, err := NewEngine(ctx, workers, tasks)
 		if err != nil {
-			t.Fatal(err.Error())
+			t.Fatal("NewEngine: ", err.Error())
+		}
+		out, err := eng.Execute(mode)
+		if err != nil {
+			t.Fatal("Execute: ", err.Error())
 		}
 
 		results := testCaseResults{}

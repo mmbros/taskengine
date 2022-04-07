@@ -7,7 +7,7 @@ import (
 
 func TestExecuteFunc(t *testing.T) {
 	var ctx context.Context
-	_, err := Execute(ctx, nil, nil, All)
+	_, err := NewEngine(ctx, nil, nil)
 	if err == nil {
 		t.Errorf("Expecting error, got no error")
 	}
