@@ -95,7 +95,7 @@ func (statmap taskStatMap) done(tid TaskID, success bool) {
 // The task is chosen so to maximize the thoughput of the tasks successfully executed.
 // It returns -1 if the tasks list is empty, or the index of the choosen task in the list.
 // It doesn't updates neither the Tasks nor the taskInfoMap.
-// WARN: it doesn't check task exists.
+// WARN: it doesn't check every TaskID exists in taskStatMap.
 func (statmap taskStatMap) pick(ts Tasks) int {
 	L := len(ts)
 	if L == 0 {
