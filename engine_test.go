@@ -24,13 +24,11 @@ func TestNewEngineNilContext(t *testing.T) {
 
 func TestNewEngine(t *testing.T) {
 
-	type testCase struct {
+	tests := map[string]struct {
 		workers []*Worker
 		input   map[string]testCaseTasks
 		err     error
-	}
-
-	testCases := map[string]testCase{
+	}{
 		"duplicate worker": {
 			workers: []*Worker{
 				{"w1", 1, workFn},
@@ -83,22 +81,25 @@ func TestNewEngine(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	for title, tc := range testCases {
-		tasks := newTestWorkeridTasks(t, tc.input)
-		_, err := NewEngine(ctx, tc.workers, tasks)
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 
-		if tc.err == nil {
-			if err != nil {
-				t.Errorf("%s - Unexpected error %q", title, err)
+			tasks := newTestWorkeridTasks(t, tt.input)
+			_, err := NewEngine(ctx, tt.workers, tasks)
+
+			if tt.err == nil {
+				if err != nil {
+					t.Errorf("unexpected error %q", err)
+				}
+			} else {
+				// tc.err != nil
+				if err == nil {
+					t.Errorf("expected error %q, found no error", tt.err)
+				} else if err.Error() != tt.err.Error() {
+					t.Errorf("expected error %q, found error %q", tt.err, err)
+				}
 			}
-		} else {
-			// tc.err != nil
-			if err == nil {
-				t.Errorf("%s - Expected error %q, found no error", title, tc.err)
-			} else if err.Error() != tc.err.Error() {
-				t.Errorf("%s - Expected error %q, found error %q", title, tc.err, err)
-			}
-		}
+		})
 	}
 }
 
@@ -120,12 +121,10 @@ func TestExecuteFirstSuccessOrLastError(t *testing.T) {
 		{"w3", 1, workFn},
 	}
 
-	type testCase struct {
+	tests := map[string]struct {
 		input    map[string]testCaseTasks
 		expected testCaseResults
-	}
-
-	testCases := map[string]testCase{
+	}{
 		"all ok": {
 			input: map[string]testCaseTasks{
 				"w1": {{"t3", 30, true}, {"t2", 20, true}, {"t1", 10, true}},
@@ -235,28 +234,29 @@ func TestExecuteFirstSuccessOrLastError(t *testing.T) {
 		cmpopts.SortSlices(testCaseResultLess),
 	}
 
-	for title, tc := range testCases {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			tasks := newTestWorkeridTasks(t, tt.input)
 
-		tasks := newTestWorkeridTasks(t, tc.input)
+			eng, err := NewEngine(ctx, workers, tasks)
+			if err != nil {
+				t.Fatal(err.Error())
+			}
+			out, err := eng.Execute(mode)
+			if err != nil {
+				t.Fatal(err.Error())
+			}
 
-		eng, err := NewEngine(ctx, workers, tasks)
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-		out, err := eng.Execute(mode)
-		if err != nil {
-			t.Fatal(err.Error())
-		}
+			results := testCaseResults{}
+			for res := range out {
+				tres := res.(*testResult)
+				results = append(results, tres.ToTestCaseResult())
+			}
 
-		results := testCaseResults{}
-		for res := range out {
-			tres := res.(*testResult)
-			results = append(results, tres.ToTestCaseResult())
-		}
-
-		if diff := cmp.Diff(tc.expected, results, copts); diff != "" {
-			t.Errorf("%s: mismatch (-want +got):\n%s", title, diff)
-		}
+			if diff := cmp.Diff(tt.expected, results, copts); diff != "" {
+				t.Errorf("mismatch (-want +got):\n%s", diff)
+			}
+		})
 	}
 
 }
@@ -268,12 +268,10 @@ func TestExecuteUntilFirstSuccess(t *testing.T) {
 		{"w3", 1, workFn},
 	}
 
-	type testCase struct {
+	tests := map[string]struct {
 		input    map[string]testCaseTasks
 		expected testCaseResults
-	}
-
-	testCases := map[string]testCase{
+	}{
 		"3 ok": {
 			input: map[string]testCaseTasks{
 				"w1": {{"t1", 30, true}},
@@ -327,28 +325,29 @@ func TestExecuteUntilFirstSuccess(t *testing.T) {
 		cmpopts.SortSlices(testCaseResultLess),
 	}
 
-	for title, tc := range testCases {
-		tasks := newTestWorkeridTasks(t, tc.input)
+	for title, tc := range tests {
+		t.Run(title, func(t *testing.T) {
+			tasks := newTestWorkeridTasks(t, tc.input)
 
-		eng, err := NewEngine(ctx, workers, tasks)
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-		out, err := eng.Execute(mode)
-		if err != nil {
-			t.Fatal(err.Error())
-		}
+			eng, err := NewEngine(ctx, workers, tasks)
+			if err != nil {
+				t.Fatal(err.Error())
+			}
+			out, err := eng.Execute(mode)
+			if err != nil {
+				t.Fatal(err.Error())
+			}
 
-		results := testCaseResults{}
-		for res := range out {
-			tres := res.(*testResult)
-			results = append(results, tres.ToTestCaseResult())
-		}
+			results := testCaseResults{}
+			for res := range out {
+				tres := res.(*testResult)
+				results = append(results, tres.ToTestCaseResult())
+			}
 
-		if diff := cmp.Diff(tc.expected, results, copts); diff != "" {
-			t.Errorf("%s: mismatch (-want +got):\n%s", title, diff)
-		}
-
+			if diff := cmp.Diff(tc.expected, results, copts); diff != "" {
+				t.Errorf("mismatch (-want +got):\n%s", diff)
+			}
+		})
 	}
 }
 
@@ -360,12 +359,10 @@ func TestExecuteAll(t *testing.T) {
 		{"w4", 1, workFn},
 	}
 
-	type testCase struct {
+	tests := map[string]struct {
 		input    map[string]testCaseTasks
 		expected testCaseResults
-	}
-
-	testCases := map[string]testCase{
+	}{
 		"all ok": {
 			input: map[string]testCaseTasks{
 				"w1": {{"t1", 30, true}},
@@ -387,27 +384,65 @@ func TestExecuteAll(t *testing.T) {
 		cmpopts.SortSlices(testCaseResultLess),
 	}
 
-	for title, tc := range testCases {
-		tasks := newTestWorkeridTasks(t, tc.input)
+	for title, tc := range tests {
+		t.Run(title, func(t *testing.T) {
 
-		eng, err := NewEngine(ctx, workers, tasks)
-		if err != nil {
-			t.Fatal("NewEngine: ", err.Error())
-		}
-		out, err := eng.Execute(mode)
-		if err != nil {
-			t.Fatal("Execute: ", err.Error())
-		}
+			tasks := newTestWorkeridTasks(t, tc.input)
 
-		results := testCaseResults{}
-		for res := range out {
-			tres := res.(*testResult)
-			results = append(results, tres.ToTestCaseResult())
-		}
+			eng, err := NewEngine(ctx, workers, tasks)
+			if err != nil {
+				t.Fatal("NewEngine: ", err.Error())
+			}
+			out, err := eng.Execute(mode)
+			if err != nil {
+				t.Fatal("Execute: ", err.Error())
+			}
 
-		if diff := cmp.Diff(tc.expected, results, copts); diff != "" {
-			t.Errorf("%s: mismatch (-want +got):\n%s", title, diff)
-		}
+			results := testCaseResults{}
+			for res := range out {
+				tres := res.(*testResult)
+				results = append(results, tres.ToTestCaseResult())
+			}
 
+			if diff := cmp.Diff(tc.expected, results, copts); diff != "" {
+				t.Errorf("mismatch (-want +got):\n%s", diff)
+			}
+
+		})
 	}
 }
+
+// func TestEngine_ExecuteEvent(t *testing.T) {
+// 	type fields struct {
+// 		workers     map[WorkerID]*Worker
+// 		widtasks    WorkerTasks
+// 		ctx         context.Context
+// 		workersList []*Worker
+// 	}
+// 	tests := []struct {
+// 		name    string
+// 		fields  fields
+// 		want    chan Event
+// 		wantErr bool
+// 	}{
+// 		// TODO: Add test cases.
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			eng := &Engine{
+// 				workers:     tt.fields.workers,
+// 				widtasks:    tt.fields.widtasks,
+// 				ctx:         tt.fields.ctx,
+// 				workersList: tt.fields.workersList,
+// 			}
+// 			got, err := eng.ExecuteEvent()
+// 			if (err != nil) != tt.wantErr {
+// 				t.Errorf("Engine.ExecuteEvent() error = %v, wantErr %v", err, tt.wantErr)
+// 				return
+// 			}
+// 			if !reflect.DeepEqual(got, tt.want) {
+// 				t.Errorf("Engine.ExecuteEvent() = %v, want %v", got, tt.want)
+// 			}
+// 		})
+// 	}
+// }
