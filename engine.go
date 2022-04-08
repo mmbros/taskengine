@@ -32,18 +32,22 @@ type Mode int
 // Values of mode of execution for each task.
 const (
 	// For each task returns only one result:
-	// the first success or the last error.
-	FirstSuccessOrLastError Mode = iota
+	// the first success or the last result.
+	FirstSuccessOrLastResult Mode = iota
 
 	// For each task returns the results until the first success:
 	// after the first success the other requests are cancelled and not returned.
 	// At most one success is returned.
 	UntilFirstSuccess
 
-	// For each task returns the result of all the workers.
+	// For each task returns the success or error results.
+	// The canceled resuts are not returned.
 	// Multiple success results can be returned.
-	// After the first success, the remaining requests are cancelled.
-	All
+	SuccessOrError
+
+	// For each task returns the result of all the workers: success, error or canceled.
+	// Multiple success results can be returned.
+	AllResults
 )
 
 // Engine contains the workers and the tasks of each worker.
@@ -139,11 +143,14 @@ func (eng *Engine) Execute(mode Mode) (chan Result, error) {
 
 	var exportResult exportResultFn
 
-	if mode == FirstSuccessOrLastError {
+	switch mode {
+	case FirstSuccessOrLastResult:
 		exportResult = func(e Event) bool { return e.IsFirstSuccessOrLastResult() }
-	} else if mode == UntilFirstSuccess {
+	case UntilFirstSuccess:
 		exportResult = func(e Event) bool { return e.IsResultUntilFirstSuccess() }
-	} else {
+	case SuccessOrError:
+		exportResult = func(e Event) bool { return e.IsSuccessOrError() }
+	default:
 		exportResult = func(e Event) bool { return e.IsResult() }
 	}
 

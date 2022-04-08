@@ -100,6 +100,17 @@ func (ev *Event) IsResultUntilFirstSuccess() bool {
 	}
 }
 
+// IsSuccessOrError return true if it is a result and
+// it is a success or an error result.
+// Return false in case of canceled event.
+func (ev *Event) IsSuccessOrError() bool {
+	if (ev == nil) || (ev.Result == nil) {
+		return false
+	}
+	err := ev.Result.Error()
+	return !errors.Is(err, context.Canceled)
+}
+
 // IsResult return true if the event has a not nil result
 // i.e. not a start event
 func (ev *Event) IsResult() bool {

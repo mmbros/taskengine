@@ -248,7 +248,7 @@ func TestEngine_ExecuteEvent(t *testing.T) {
 func TestEngine_Execute_NilEngine(t *testing.T) {
 	var eng *Engine
 	errmsg := "nil engine"
-	_, err := eng.Execute(All)
+	_, err := eng.Execute(AllResults)
 	if err == nil {
 		t.Errorf("expecting error, got no error")
 	} else if err.Error() != errmsg {
@@ -256,7 +256,7 @@ func TestEngine_Execute_NilEngine(t *testing.T) {
 	}
 }
 
-func TestEngine_Execute_FirstSuccessOrLastError(t *testing.T) {
+func TestEngine_Execute_FirstSuccessOrLastResult(t *testing.T) {
 	workers := []*Worker{
 		{"w1", 1, testingWorkFnX},
 		{"w2", 1, testingWorkFnX},
@@ -371,7 +371,7 @@ func TestEngine_Execute_FirstSuccessOrLastError(t *testing.T) {
 		},
 	}
 
-	mode := FirstSuccessOrLastError
+	mode := FirstSuccessOrLastResult
 	ctx := context.Background()
 	copts := cmp.Options{
 		cmp.Comparer(func(x, y testingResultX) bool {
@@ -473,7 +473,7 @@ func TestEngine_Execute_UntilFirstSuccess(t *testing.T) {
 	}
 }
 
-func TestEngine_Execute_All(t *testing.T) {
+func TestEngine_Execute_IsSuccessOrError(t *testing.T) {
 	workers := []*Worker{
 		{"w1", 1, testingWorkFn},
 		{"w2", 1, testingWorkFn},
@@ -524,7 +524,78 @@ func TestEngine_Execute_All(t *testing.T) {
 		},
 	}
 
-	mode := All
+	mode := AllResults
+	ctx := context.Background()
+	copts := cmp.Options{cmp.Comparer(func(x, y testingResult) bool { return x.Err == y.Err })}
+
+	for title, tt := range tests {
+		t.Run(title, func(t *testing.T) {
+			wts := testingWorkerTasks(tt.input)
+			out := mustExecute(ctx, workers, wts, mode)
+			results := []testingResult{}
+			for res := range out {
+				tres := res.(*testingResult)
+				results = append(results, *tres)
+			}
+			if diff := cmp.Diff(tt.expected, results, copts); diff != "" {
+				t.Errorf("mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestEngine_Execute_AllResults(t *testing.T) {
+	workers := []*Worker{
+		{"w1", 1, testingWorkFn},
+		{"w2", 1, testingWorkFn},
+		{"w3", 1, testingWorkFn},
+		{"w4", 1, testingWorkFn},
+	}
+
+	tests := map[string]struct {
+		input    map[string]testingTasks
+		expected []testingResult
+	}{
+		"all ok": {
+			input: map[string]testingTasks{
+				"w1": {{"t1", 30, true}},
+				"w2": {{"t1", 20, true}},
+				"w3": {{"t1", 10, true}},
+				"w4": {},
+			},
+			expected: []testingResult{
+				{},                 // w3
+				{context.Canceled}, // w2
+				{context.Canceled}, // w1
+			},
+		},
+		"first in error": {
+			input: map[string]testingTasks{
+				"w1": {{"t1", 30, true}},
+				"w2": {{"t1", 20, true}},
+				"w3": {{"t1", 10, false}},
+			},
+			expected: []testingResult{
+				{testingError},     // w3
+				{},                 // w2
+				{context.Canceled}, // w1
+			},
+		},
+		"last in error but canceled": {
+			input: map[string]testingTasks{
+				"w1": {{"t1", 10, true}},
+				"w2": {{"t1", 20, true}},
+				"w3": {{"t1", 30, false}},
+			},
+			expected: []testingResult{
+				{},                 // w1
+				{context.Canceled}, // w2
+				{context.Canceled}, // w3
+			},
+		},
+	}
+
+	mode := AllResults
 	ctx := context.Background()
 	copts := cmp.Options{cmp.Comparer(func(x, y testingResult) bool { return x.Err == y.Err })}
 
