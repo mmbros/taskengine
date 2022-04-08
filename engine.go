@@ -31,9 +31,13 @@ type Mode int
 
 // Values of mode of execution for each task.
 const (
+	// For each task returns the result of all the workers: success, error or canceled.
+	// Multiple success results can be returned.
+	AllResults Mode = iota
+
 	// For each task returns only one result:
 	// the first success or the last result.
-	FirstSuccessOrLastResult Mode = iota
+	FirstSuccessOrLastResult
 
 	// For each task returns the results until the first success:
 	// after the first success the other requests are cancelled and not returned.
@@ -44,10 +48,6 @@ const (
 	// The canceled resuts are not returned.
 	// Multiple success results can be returned.
 	SuccessOrError
-
-	// For each task returns the result of all the workers: success, error or canceled.
-	// Multiple success results can be returned.
-	AllResults
 )
 
 // Engine contains the workers and the tasks of each worker.
