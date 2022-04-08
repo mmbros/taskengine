@@ -9,6 +9,8 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
+var testingError error = errors.New("testing error")
+
 // testingTask is used to define a task in the test cases.
 type testingTask struct {
 	taskid  string // task name
@@ -22,10 +24,15 @@ func (tt testingTask) TaskID() TaskID { return TaskID(tt.taskid) }
 type testingTasks []testingTask
 
 type testingResult struct {
-	err error
+	Err error
+}
+type testingResultX struct {
+	Tid string
+	Err error
 }
 
-func (tr testingResult) Error() error { return tr.err }
+func (tr testingResult) Error() error  { return tr.Err }
+func (tr testingResultX) Error() error { return tr.Err }
 
 // event's informations that will be checked
 type testingEvent struct {
@@ -38,14 +45,29 @@ type testingEventsGroup []testingEvent
 
 func testingWorkFn(ctx context.Context, workerInst int, task Task) Result {
 	t := task.(testingTask)
-	r := &testResult{}
+	r := &testingResult{}
 
 	select {
 	case <-ctx.Done():
-		r.err = ctx.Err()
+		r.Err = ctx.Err()
 	case <-time.After(time.Duration(t.msec) * time.Millisecond):
 		if !t.success {
-			r.err = errors.New("ERROR")
+			r.Err = testingError
+		}
+	}
+	return r
+}
+func testingWorkFnX(ctx context.Context, workerInst int, task Task) Result {
+	t := task.(testingTask)
+	r := &testingResultX{}
+	r.Tid = t.taskid
+
+	select {
+	case <-ctx.Done():
+		r.Err = ctx.Err()
+	case <-time.After(time.Duration(t.msec) * time.Millisecond):
+		if !t.success {
+			r.Err = testingError
 		}
 	}
 	return r
@@ -134,4 +156,16 @@ func testingEventsDiff(want []testingEventsGroup, events []Event) string {
 	}
 
 	return ""
+}
+
+func mustExecute(ctx context.Context, workers []*Worker, wts WorkerTasks, mode Mode) chan Result {
+	eng, err := NewEngine(ctx, workers, wts)
+	if err != nil {
+		panic("NewEngine:" + err.Error())
+	}
+	out, err := eng.Execute(mode)
+	if err != nil {
+		panic("Execute:" + err.Error())
+	}
+	return out
 }

@@ -2,137 +2,177 @@ package taskengine
 
 import (
 	"context"
+	"errors"
 	"testing"
 )
 
-func TestEvents(t *testing.T) {
-
+func TestEventType_String(t *testing.T) {
 	tests := []struct {
-		name    string
-		workers []*Worker
-		input   map[string]testingTasks
-		want    []testingEventsGroup
+		name  string
+		etype EventType
+		want  string
 	}{
 		{
-			name: "one worker",
-			workers: []*Worker{
-				{"w1", 1, testingWorkFn},
-			},
-			input: map[string]testingTasks{
-				"w1": {{"t3", 30, true}, {"t2", 20, true}, {"t1", 10, false}},
-			},
-			want: []testingEventsGroup{
-				{{"w1", "t1", EventStart}},
-				{{"w1", "t1", EventError}},
-				{{"w1", "t2", EventStart}},
-				{{"w1", "t2", EventSuccess}},
-				{{"w1", "t3", EventStart}},
-				{{"w1", "t3", EventSuccess}},
-			},
+			name:  "nil",
+			etype: EventNil,
+			want:  "Nil",
 		},
 		{
-			name: "one worker two instances",
-			workers: []*Worker{
-				{"w1", 2, testingWorkFn},
-			},
-			input: map[string]testingTasks{
-				"w1": {{"t3", 30, true}, {"t2", 20, false}, {"t1", 10, false}},
-			},
-			want: []testingEventsGroup{
-				{{"w1", "t1", EventStart}, {"w1", "t2", EventStart}},
-				{{"w1", "t1", EventError}, {"w1", "t2", EventError}, {"w1", "t3", EventStart}},
-				{{"w1", "t3", EventSuccess}},
-			},
+			name:  "start",
+			etype: EventStart,
+			want:  "Start",
 		},
 		{
-			name: "three workers same task",
-			workers: []*Worker{
-				{"w1", 1, testingWorkFn},
-				{"w2", 2, testingWorkFn},
-				{"w3", 3, testingWorkFn},
-			},
-			input: map[string]testingTasks{
-				"w1": {{"t1", 10, false}},
-				"w2": {{"t1", 20, true}},
-				"w3": {{"t1", 30, true}},
-			},
-			want: []testingEventsGroup{
-				{{"w1", "t1", EventStart}, {"w2", "t1", EventStart}, {"w3", "t1", EventStart}},
-				{{"w1", "t1", EventError}},
-				{{"w2", "t1", EventSuccess}},
-				{{"w3", "t1", EventCanceled}},
-			},
-		},
-
-		{
-			name: "two workers",
-			workers: []*Worker{
-				{"w1", 1, testingWorkFn},
-				{"w2", 1, testingWorkFn},
-			},
-			input: map[string]testingTasks{
-				"w1": {{"t3", 10, true}, {"t2", 10, true}, {"t1", 10, false}},
-				"w2": {{"t3", 10, true}, {"t2", 5, false}},
-			},
-			want: []testingEventsGroup{
-				{{"w1", "t1", EventStart}, {"w2", "t2", EventStart}},
-				{{"w1", "t1", EventError}, {"w2", "t2", EventError}, {"w1", "t2", EventStart}, {"w2", "t3", EventStart}},
-				{{"w2", "t3", EventSuccess}},
-				{{"w1", "t2", EventSuccess}},
-				{{"w1", "t3", EventStart}},
-				{{"w1", "t3", EventCanceled}},
-			},
+			name:  "Success",
+			etype: EventSuccess,
+			want:  "Success",
 		},
 		{
-			name: "three workers",
-			workers: []*Worker{
-				{"w1", 1, testingWorkFn},
-				{"w2", 1, testingWorkFn},
-				{"w3", 1, testingWorkFn},
-			},
-			input: map[string]testingTasks{
-				"w1": {{"t3", 30, false}, {"t2", 20, true}, {"t1", 6, true}},
-				"w2": {{"t3", 20, false}, {"t2", 8, true}},
-				"w3": {{"t3", 10, false}},
-			},
-			want: []testingEventsGroup{
-				{{"w1", "t1", EventStart}, {"w2", "t2", EventStart}, {"w3", "t3", EventStart}},
-				{{"w1", "t1", EventSuccess}},
-				{{"w1", "t2", EventStart}},
-				{{"w2", "t2", EventSuccess}},
-				{{"w2", "t3", EventStart}, {"w1", "t2", EventCanceled}},
-				{{"w1", "t3", EventStart}},
-				{{"w3", "t3", EventError}},
-				{{"w2", "t3", EventError}},
-				{{"w1", "t3", EventError}},
-			},
+			name:  "Canceled",
+			etype: EventCanceled,
+			want:  "Canceled",
+		},
+		{
+			name:  "Error",
+			etype: EventError,
+			want:  "Error",
+		},
+		{
+			name:  "Invalid < 0",
+			etype: -1,
+			want:  "Invalid",
+		},
+		{
+			name:  "Invalid > 0",
+			etype: 100,
+			want:  "Invalid",
 		},
 	}
 
-	// copts := cmp.Options{}
-	ctx := context.Background()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			wts := testingWorkerTasks(tt.input)
-			eng, err := NewEngine(ctx, tt.workers, wts)
-
-			if err != nil {
-				t.Errorf("newEngine: unexpected error: %s", err)
+			got := tt.etype.String()
+			if got != tt.want {
+				t.Errorf("want %q, got %q", tt.want, got)
 			}
+		})
+	}
+}
 
-			eventc, err := eng.ExecuteEvent()
-			if err != nil {
-				t.Errorf("ExecuteEvent: unexpected error: %s", err)
+func TestEvent_Type(t *testing.T) {
+	tests := []struct {
+		name  string
+		event *Event
+		want  EventType
+	}{
+		{
+			name:  "nil",
+			event: nil,
+			want:  EventNil,
+		},
+		{
+			name:  "start",
+			event: &Event{},
+			want:  EventStart,
+		},
+		{
+			name:  "success",
+			event: &Event{Result: &testingResult{}},
+			want:  EventSuccess,
+		},
+		{
+			name:  "canceled",
+			event: &Event{Result: &testingResult{Err: context.Canceled}},
+			want:  EventCanceled,
+		},
+		{
+			name:  "error",
+			event: &Event{Result: &testingResult{Err: errors.New("err")}},
+			want:  EventError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.event.Type()
+			if got != tt.want {
+				t.Errorf("want %q, got %q", tt.want, got)
 			}
+		})
+	}
+}
 
-			got := []Event{}
-			for ev := range eventc {
-				t.Log(ev)
-				got = append(got, ev)
-			}
+func TestEvent_FirstSuccessOrLastError(t *testing.T) {
+	tests := []struct {
+		name  string
+		event *Event
+		want  bool
+	}{
+		{
+			name:  "event nil",
+			event: nil,
+			want:  false,
+		},
+		{
+			name:  "result nil",
+			event: &Event{},
+			want:  false,
+		},
+		{
+			name: "first success",
+			event: &Event{
+				Result: testingResult{},
+				Stat:   TaskStat{10, 20, 5, 1},
+			},
+			want: true,
+		},
+		{
+			name: "second success",
+			event: &Event{
+				Result: testingResult{},
+				Stat:   TaskStat{10, 20, 5, 2},
+			},
+			want: false,
+		},
+		{
+			name: "last error and no success",
+			event: &Event{
+				Result: testingResult{testingError},
+				Stat:   TaskStat{0, 0, 5, 0},
+			},
+			want: true,
+		},
+		{
+			name: "last error with previous success",
+			event: &Event{
+				Result: testingResult{testingError},
+				Stat:   TaskStat{0, 0, 5, 1},
+			},
+			want: false,
+		},
+		{
+			name: "not last error - todo",
+			event: &Event{
+				Result: testingResult{testingError},
+				Stat:   TaskStat{1, 0, 5, 0},
+			},
+			want: false,
+		},
+		{
+			name: "not last error - doing",
+			event: &Event{
+				Result: testingResult{testingError},
+				Stat:   TaskStat{0, 1, 5, 0},
+			},
+			want: false,
+		},
+	}
 
-			if diff := testingEventsDiff(tt.want, got); diff != "" {
-				t.Errorf("%s: mismatch (-want +got):\n%s", tt.name, diff)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.event.IsFirstSuccessOrLastResult()
+			if got != tt.want {
+				t.Errorf("want %v, got %v", tt.want, got)
 			}
 		})
 	}

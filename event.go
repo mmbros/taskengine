@@ -66,12 +66,42 @@ func (ev *Event) Type() EventType {
 	return EventError
 }
 
-// FirstSuccessOrLastError ..
-func (ev Event) FirstSuccessOrLastError() bool {
-	if ev.Result != nil {
-		success := (ev.Result.Error() == nil)
-		stat := ev.Stat
-		return (success && stat.Success == 1) || (stat.Completed() && stat.Success == 0)
+// IsFirstSuccessOrLastResult return true if is is a result and:
+// - it is the first success, or
+// - it is the last result and no success was found
+func (ev *Event) IsFirstSuccessOrLastResult() bool {
+	if (ev == nil) || (ev.Result == nil) {
+		return false
 	}
-	return false
+	stat := &ev.Stat
+	if ev.Result.Error() == nil {
+		// first success
+		return stat.Success == 1
+	} else {
+		// completed (no more workers) and no success was found
+		return stat.Todo == 0 && stat.Doing == 0 && stat.Success == 0
+	}
+}
+
+// IsResultUntilFirstSuccess return true if it is a result and:
+// - it is the first success, or
+// - it is not a success and no success was previously found
+func (ev *Event) IsResultUntilFirstSuccess() bool {
+	if (ev == nil) || (ev.Result == nil) {
+		return false
+	}
+	stat := &ev.Stat
+	if ev.Result.Error() == nil {
+		// first success
+		return stat.Success == 1
+	} else {
+		// it is not a success and no success was found
+		return stat.Success == 0
+	}
+}
+
+// IsResult return true if the event has a not nil result
+// i.e. not a start event
+func (ev *Event) IsResult() bool {
+	return (ev != nil) || (ev.Result != nil)
 }

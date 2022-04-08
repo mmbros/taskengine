@@ -134,49 +134,38 @@ func NewEngine(ctx context.Context, ws []*Worker, wts WorkerTasks) (*Engine, err
 // Execute returns a chan that receives the Results of the workers for the input Requests.
 func (eng *Engine) Execute(mode Mode) (chan Result, error) {
 
+	// filter the results to be exported
+	type exportResultFn func(Event) bool
+
+	var exportResult exportResultFn
+
+	if mode == FirstSuccessOrLastError {
+		exportResult = func(e Event) bool { return e.IsFirstSuccessOrLastResult() }
+	} else if mode == UntilFirstSuccess {
+		exportResult = func(e Event) bool { return e.IsResultUntilFirstSuccess() }
+	} else {
+		exportResult = func(e Event) bool { return e.IsResult() }
+	}
+
+	// init the event chan
 	eventchan, err := eng.ExecuteEvent()
 	if err != nil {
 		return nil, err
 	}
+
+	// create the result chan
 	resultchan := make(chan Result)
 
 	// goroutine that read input from the event chan
 	// write output to the result chan.
-	go func(eventc chan Event, resultc chan Result) {
+	go func(eventc chan Event, resultc chan Result, export exportResultFn) {
 		for e := range eventc {
-
-			etype := e.Type()
-
-			if etype == EventStart {
-				continue
-			}
-
-			//  success -> Success
-			// !success -> Error | Cancel
-			success := (etype == EventSuccess)
-
-			switch mode {
-			case FirstSuccessOrLastError:
-				if (success && e.Stat.Success == 1) || (e.Stat.Completed() && e.Stat.Success == 0) {
-					// return the result if:
-					// - it is the first success, or
-					// - it is completed and no success was found
-					resultc <- e.Result
-				}
-			case UntilFirstSuccess:
-				if (success && e.Stat.Success == 1) || (!success && e.Stat.Success == 0) {
-					// return the result if:
-					// - it is the first success, or
-					// - it is not a success and no success was found
-					resultc <- e.Result
-				}
-			default:
+			if export(e) {
 				resultc <- e.Result
 			}
-
 		}
 		close(resultc)
-	}(eventchan, resultchan)
+	}(eventchan, resultchan, exportResult)
 
 	return resultchan, nil
 }
