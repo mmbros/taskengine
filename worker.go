@@ -41,9 +41,10 @@ type Result interface {
 
 // WorkFunc is the worker function.
 // - context: the context
-// - int:     the instance id of the worker
-// - Task:    the task to be eecuted
-type WorkFunc func(context.Context, int, Task) Result
+// - Worker:  the worker that execute the task
+// - int:     the instance of the worker
+// - Task:    the task to be executed
+type WorkFunc func(context.Context, *Worker, int, Task) Result
 
 // Worker is the unit (identified by WorkerID)
 // that receives the Requests and

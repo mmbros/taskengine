@@ -27,12 +27,18 @@ type testingResult struct {
 	Err error
 }
 type testingResultX struct {
+	// Wid string
 	Tid string
 	Err error
 }
 
-func (tr testingResult) Error() error  { return tr.Err }
+func (tr testingResult) Error() error { return tr.Err }
+
 func (tr testingResultX) Error() error { return tr.Err }
+
+func comparerTestingResultX(x, y testingResultX) bool {
+	return (x.Err == y.Err) && (x.Tid == y.Tid) // && (x.Wid == y.Wid)
+}
 
 // event's informations that will be checked
 type testingEvent struct {
@@ -43,7 +49,7 @@ type testingEvent struct {
 
 type testingEventsGroup []testingEvent
 
-func testingWorkFn(ctx context.Context, workerInst int, task Task) Result {
+func testingWorkFn(ctx context.Context, worker *Worker, workerInst int, task Task) Result {
 	t := task.(testingTask)
 	r := &testingResult{}
 
@@ -57,10 +63,12 @@ func testingWorkFn(ctx context.Context, workerInst int, task Task) Result {
 	}
 	return r
 }
-func testingWorkFnX(ctx context.Context, workerInst int, task Task) Result {
+func testingWorkFnX(ctx context.Context, worker *Worker, workerInst int, task Task) Result {
 	t := task.(testingTask)
-	r := &testingResultX{}
-	r.Tid = t.taskid
+	r := &testingResultX{
+		Tid: t.taskid,
+		// Wid: string(worker.WorkerID),
+	}
 
 	select {
 	case <-ctx.Done():

@@ -238,7 +238,7 @@ func (eng *Engine) ExecuteEvent() (chan Event, error) {
 					eventc <- event
 
 					// get the worker result of the task
-					res := w.Work(req.ctx, inst, req.task)
+					res := w.Work(req.ctx, w, inst, req.task)
 
 					// send the result to the output chan
 					jout := jobOutput{
