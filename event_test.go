@@ -2,7 +2,6 @@ package taskengine
 
 import (
 	"context"
-	"errors"
 	"testing"
 )
 
@@ -87,7 +86,7 @@ func TestEvent_Type(t *testing.T) {
 		},
 		{
 			name:  "error",
-			event: &Event{Result: &testingResult{Err: errors.New("err")}},
+			event: &Event{Result: &testingResult{Err: testingError}},
 			want:  EventError,
 		},
 	}
@@ -137,7 +136,7 @@ func TestEvent_FirstSuccessOrLastError(t *testing.T) {
 		{
 			name: "last error and no success",
 			event: &Event{
-				Result: testingResult{testingError},
+				Result: testingResult{Err: testingError},
 				Stat:   TaskStat{0, 0, 5, 0},
 			},
 			want: true,
@@ -145,7 +144,7 @@ func TestEvent_FirstSuccessOrLastError(t *testing.T) {
 		{
 			name: "last error with previous success",
 			event: &Event{
-				Result: testingResult{testingError},
+				Result: testingResult{Err: testingError},
 				Stat:   TaskStat{0, 0, 5, 1},
 			},
 			want: false,
@@ -153,7 +152,7 @@ func TestEvent_FirstSuccessOrLastError(t *testing.T) {
 		{
 			name: "not last error - todo",
 			event: &Event{
-				Result: testingResult{testingError},
+				Result: testingResult{Err: testingError},
 				Stat:   TaskStat{1, 0, 5, 0},
 			},
 			want: false,
@@ -161,7 +160,7 @@ func TestEvent_FirstSuccessOrLastError(t *testing.T) {
 		{
 			name: "not last error - doing",
 			event: &Event{
-				Result: testingResult{testingError},
+				Result: testingResult{Err: testingError},
 				Stat:   TaskStat{0, 1, 5, 0},
 			},
 			want: false,

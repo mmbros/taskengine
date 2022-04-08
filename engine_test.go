@@ -258,14 +258,14 @@ func TestEngine_Execute_NilEngine(t *testing.T) {
 
 func TestEngine_Execute_FirstSuccessOrLastResult(t *testing.T) {
 	workers := []*Worker{
-		{"w1", 1, testingWorkFnX},
-		{"w2", 1, testingWorkFnX},
-		{"w3", 1, testingWorkFnX},
+		{"w1", 1, testingWorkFn},
+		{"w2", 1, testingWorkFn},
+		{"w3", 1, testingWorkFn},
 	}
 
 	tests := map[string]struct {
 		input    map[string]testingTasks
-		expected []testingResultX
+		expected []testingResult
 	}{
 		"all ok": {
 			input: map[string]testingTasks{
@@ -273,10 +273,10 @@ func TestEngine_Execute_FirstSuccessOrLastResult(t *testing.T) {
 				"w2": {{"t3", 20, true}, {"t2", 14, true}},
 				"w3": {{"t3", 18, true}},
 			},
-			expected: []testingResultX{
-				{"t1", nil}, // w1
-				{"t2", nil}, // w2
-				{"t3", nil}, // w3
+			expected: []testingResult{
+				{"w1", "t1", nil},
+				{"w2", "t2", nil},
+				{"w3", "t3", nil},
 			},
 		},
 		"w3-t3 ko": {
@@ -285,10 +285,10 @@ func TestEngine_Execute_FirstSuccessOrLastResult(t *testing.T) {
 				"w2": {{"t3", 20, true}, {"t2", 15, true}},
 				"w3": {{"t3", 10, false}},
 			},
-			expected: []testingResultX{
-				{"t1", nil}, // w1
-				{"t2", nil}, // w2
-				{"t3", nil}, // w2
+			expected: []testingResult{
+				{"w1", "t1", nil},
+				{"w2", "t2", nil},
+				{"w2", "t3", nil},
 			},
 		},
 		"all ko": {
@@ -297,10 +297,10 @@ func TestEngine_Execute_FirstSuccessOrLastResult(t *testing.T) {
 				"w2": {{"t3", 20, false}, {"t2", 14, false}},
 				"w3": {{"t3", 18, false}},
 			},
-			expected: []testingResultX{
-				{"t1", testingError}, // w1
-				{"t2", testingError}, // w1
-				{"t3", testingError}, // w1
+			expected: []testingResult{
+				{"w1", "t1", testingError},
+				{"w1", "t2", testingError},
+				{"w1", "t3", testingError},
 			},
 		},
 		"all ok w1": {
@@ -309,10 +309,10 @@ func TestEngine_Execute_FirstSuccessOrLastResult(t *testing.T) {
 				"w2": {{"t2", 40, true}, {"t3", 20, true}},
 				"w3": {{"t3", 50, true}},
 			},
-			expected: []testingResultX{
-				{"t1", nil}, // w1
-				{"t2", nil}, // w1
-				{"t3", nil}, // w1
+			expected: []testingResult{
+				{"w1", "t1", nil},
+				{"w1", "t2", nil},
+				{"w1", "t3", nil},
 			},
 		},
 		"all ok w1 w2": {
@@ -321,10 +321,10 @@ func TestEngine_Execute_FirstSuccessOrLastResult(t *testing.T) {
 				"w2": {{"t2", 50, true}, {"t3", 10, true}},
 				"w3": {{"t3", 50, true}},
 			},
-			expected: []testingResultX{
-				{"t1", nil}, // w1
-				{"t2", nil}, // w1
-				{"t3", nil}, // w2
+			expected: []testingResult{
+				{"w1", "t1", nil},
+				{"w1", "t2", nil},
+				{"w2", "t3", nil},
 			},
 		},
 		"all ko w1 but t1": {
@@ -333,10 +333,10 @@ func TestEngine_Execute_FirstSuccessOrLastResult(t *testing.T) {
 				"w2": {{"t3", 30, false}, {"t2", 14, true}},
 				"w3": {{"t3", 50, true}},
 			},
-			expected: []testingResultX{
-				{"t1", nil}, // w1
-				{"t2", nil}, // w2
-				{"t3", nil}, // w3
+			expected: []testingResult{
+				{"w1", "t1", nil},
+				{"w2", "t2", nil},
+				{"w3", "t3", nil},
 			},
 		},
 		"6 ok": {
@@ -345,13 +345,13 @@ func TestEngine_Execute_FirstSuccessOrLastResult(t *testing.T) {
 				"w2": {{"t1", 10, true}, {"t2", 12, true}, {"t3", 14, true}, {"t4", 10, true}, {"t5", 10, true}, {"t6", 10, true}},
 				"w3": {{"t1", 10, true}, {"t2", 12, true}, {"t3", 14, true}, {"t4", 10, true}, {"t5", 10, true}, {"t6", 10, true}},
 			},
-			expected: []testingResultX{
-				{"t1", nil}, // w1
-				{"t2", nil}, // w2
-				{"t3", nil}, // w3
-				{"t4", nil}, // w1
-				{"t5", nil}, // w2
-				{"t6", nil}, // w3
+			expected: []testingResult{
+				{"w1", "t1", nil},
+				{"w2", "t2", nil},
+				{"w3", "t3", nil},
+				{"w1", "t4", nil},
+				{"w2", "t5", nil},
+				{"w3", "t6", nil},
 			},
 		},
 		"6 long": {
@@ -360,31 +360,28 @@ func TestEngine_Execute_FirstSuccessOrLastResult(t *testing.T) {
 				"w2": {{"t1", 10, true}, {"t2", 12, true}, {"t3", 14, true}, {"t4", 10, true}, {"t5", 10, true}, {"t6", 10, true}},
 				"w3": {{"t1", 15, true}, {"t2", 12, true}, {"t3", 14, true}, {"t4", 10, true}, {"t5", 10, true}, {"t6", 10, true}},
 			},
-			expected: []testingResultX{
-				{"t2", nil}, // w2
-				{"t3", nil}, // w3
-				{"t4", nil}, // w2
-				{"t5", nil}, // w3
-				{"t6", nil}, // w2
-				{"t1", nil}, // w3
+			expected: []testingResult{
+				{"w2", "t2", nil},
+				{"w3", "t3", nil},
+				{"w2", "t4", nil},
+				{"w3", "t5", nil},
+				{"w2", "t6", nil},
+				{"w3", "t1", nil},
 			},
 		},
 	}
 
 	mode := FirstSuccessOrLastResult
 	ctx := context.Background()
-	copts := cmp.Options{
-		cmp.Comparer(func(x, y testingResultX) bool {
-			return x.Err == y.Err && x.Tid == y.Tid
-		})}
+	copts := cmp.Options{cmp.Comparer(comparerTestingResult)}
 
 	for title, tt := range tests {
 		t.Run(title, func(t *testing.T) {
 			wts := testingWorkerTasks(tt.input)
 			out := mustExecute(ctx, workers, wts, mode)
-			results := []testingResultX{}
+			results := []testingResult{}
 			for res := range out {
-				tres := res.(*testingResultX)
+				tres := res.(*testingResult)
 				results = append(results, *tres)
 			}
 			if diff := cmp.Diff(tt.expected, results, copts); diff != "" {
@@ -413,7 +410,7 @@ func TestEngine_Execute_UntilFirstSuccess(t *testing.T) {
 				"w3": {{"t1", 10, true}},
 			},
 			expected: []testingResult{
-				{}, // w3
+				{"w3", "t1", nil},
 			},
 		},
 		"1 err + 2 ok": {
@@ -423,8 +420,8 @@ func TestEngine_Execute_UntilFirstSuccess(t *testing.T) {
 				"w3": {{"t1", 10, false}},
 			},
 			expected: []testingResult{
-				{testingError}, // w3
-				{},             // w2
+				{"w3", "t1", testingError},
+				{"w2", "t1", nil},
 			},
 		},
 		"2 err + 1 ok": {
@@ -434,9 +431,9 @@ func TestEngine_Execute_UntilFirstSuccess(t *testing.T) {
 				"w3": {{"t1", 10, false}},
 			},
 			expected: []testingResult{
-				{testingError}, // w3
-				{testingError}, // w2
-				{},             // w1
+				{"w3", "t1", testingError},
+				{"w2", "t1", testingError},
+				{"w1", "t1", nil},
 			},
 		},
 		"3 err": {
@@ -446,16 +443,16 @@ func TestEngine_Execute_UntilFirstSuccess(t *testing.T) {
 				"w3": {{"t1", 10, false}},
 			},
 			expected: []testingResult{
-				{testingError}, // w3
-				{testingError}, // w2
-				{testingError}, // w1
+				{"w3", "t1", testingError},
+				{"w2", "t1", testingError},
+				{"w1", "t1", testingError},
 			},
 		},
 	}
 
 	mode := UntilFirstSuccess
 	ctx := context.Background()
-	copts := cmp.Options{cmp.Comparer(func(x, y testingResult) bool { return x.Err == y.Err })}
+	copts := cmp.Options{cmp.Comparer(comparerTestingResult)}
 
 	for title, tt := range tests {
 		t.Run(title, func(t *testing.T) {
@@ -493,9 +490,7 @@ func TestEngine_Execute_IsSuccessOrError(t *testing.T) {
 				"w4": {},
 			},
 			expected: []testingResult{
-				{},                 // w3
-				{context.Canceled}, // w2
-				{context.Canceled}, // w1
+				{"w3", "t1", nil},
 			},
 		},
 		"first in error": {
@@ -505,9 +500,8 @@ func TestEngine_Execute_IsSuccessOrError(t *testing.T) {
 				"w3": {{"t1", 10, false}},
 			},
 			expected: []testingResult{
-				{testingError},     // w3
-				{},                 // w2
-				{context.Canceled}, // w1
+				{"w3", "t1", testingError},
+				{"w2", "t1", nil},
 			},
 		},
 		"last in error but canceled": {
@@ -517,16 +511,14 @@ func TestEngine_Execute_IsSuccessOrError(t *testing.T) {
 				"w3": {{"t1", 30, false}},
 			},
 			expected: []testingResult{
-				{},                 // w1
-				{context.Canceled}, // w2
-				{context.Canceled}, // w3
+				{"w1", "t1", nil},
 			},
 		},
 	}
 
-	mode := AllResults
+	mode := SuccessOrError
 	ctx := context.Background()
-	copts := cmp.Options{cmp.Comparer(func(x, y testingResult) bool { return x.Err == y.Err })}
+	copts := cmp.Options{cmp.Comparer(comparerTestingResult)}
 
 	for title, tt := range tests {
 		t.Run(title, func(t *testing.T) {
@@ -564,9 +556,9 @@ func TestEngine_Execute_AllResults(t *testing.T) {
 				"w4": {},
 			},
 			expected: []testingResult{
-				{},                 // w3
-				{context.Canceled}, // w2
-				{context.Canceled}, // w1
+				{"w3", "t1", nil},
+				{"w2", "t1", context.Canceled},
+				{"w1", "t1", context.Canceled},
 			},
 		},
 		"first in error": {
@@ -576,28 +568,28 @@ func TestEngine_Execute_AllResults(t *testing.T) {
 				"w3": {{"t1", 10, false}},
 			},
 			expected: []testingResult{
-				{testingError},     // w3
-				{},                 // w2
-				{context.Canceled}, // w1
+				{"w3", "t1", testingError},
+				{"w2", "t1", nil},
+				{"w1", "t1", context.Canceled},
 			},
 		},
-		"last in error but canceled": {
-			input: map[string]testingTasks{
-				"w1": {{"t1", 10, true}},
-				"w2": {{"t1", 20, true}},
-				"w3": {{"t1", 30, false}},
-			},
-			expected: []testingResult{
-				{},                 // w1
-				{context.Canceled}, // w2
-				{context.Canceled}, // w3
-			},
-		},
+		// "last in error but canceled": {
+		// 	input: map[string]testingTasks{
+		// 		"w1": {{"t1", 10, true}},
+		// 		"w2": {{"t1", 20, true}},
+		// 		"w3": {{"t1", 30, false}},
+		// 	},
+		// 	expected: []testingResultX{
+		// 		{"w1", "t1", nil},
+		// 		{"w2", "t1", context.Canceled}, // same time
+		// 		{"w3", "t1", context.Canceled}, // same time
+		// 	},
+		// },
 	}
 
 	mode := AllResults
 	ctx := context.Background()
-	copts := cmp.Options{cmp.Comparer(func(x, y testingResult) bool { return x.Err == y.Err })}
+	copts := cmp.Options{cmp.Comparer(comparerTestingResult)}
 
 	for title, tt := range tests {
 		t.Run(title, func(t *testing.T) {
@@ -614,38 +606,3 @@ func TestEngine_Execute_AllResults(t *testing.T) {
 		})
 	}
 }
-
-// func TestEngine_ExecuteEvent(t *testing.T) {
-// 	type fields struct {
-// 		workers     map[WorkerID]*Worker
-// 		widtasks    WorkerTasks
-// 		ctx         context.Context
-// 		workersList []*Worker
-// 	}
-// 	tests := []struct {
-// 		name    string
-// 		fields  fields
-// 		want    chan Event
-// 		wantErr bool
-// 	}{
-// 		// TODO: Add test cases.
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			eng := &Engine{
-// 				workers:     tt.fields.workers,
-// 				widtasks:    tt.fields.widtasks,
-// 				ctx:         tt.fields.ctx,
-// 				workersList: tt.fields.workersList,
-// 			}
-// 			got, err := eng.ExecuteEvent()
-// 			if (err != nil) != tt.wantErr {
-// 				t.Errorf("Engine.ExecuteEvent() error = %v, wantErr %v", err, tt.wantErr)
-// 				return
-// 			}
-// 			if !reflect.DeepEqual(got, tt.want) {
-// 				t.Errorf("Engine.ExecuteEvent() = %v, want %v", got, tt.want)
-// 			}
-// 		})
-// 	}
-// }

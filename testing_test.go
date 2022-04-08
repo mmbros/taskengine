@@ -24,20 +24,15 @@ func (tt testingTask) TaskID() TaskID { return TaskID(tt.taskid) }
 type testingTasks []testingTask
 
 type testingResult struct {
-	Err error
-}
-type testingResultX struct {
-	// Wid string
+	Wid string
 	Tid string
 	Err error
 }
 
 func (tr testingResult) Error() error { return tr.Err }
 
-func (tr testingResultX) Error() error { return tr.Err }
-
-func comparerTestingResultX(x, y testingResultX) bool {
-	return (x.Err == y.Err) && (x.Tid == y.Tid) // && (x.Wid == y.Wid)
+func comparerTestingResult(x, y testingResult) bool {
+	return (x.Err == y.Err) && (x.Tid == y.Tid) && (x.Wid == y.Wid)
 }
 
 // event's informations that will be checked
@@ -51,23 +46,9 @@ type testingEventsGroup []testingEvent
 
 func testingWorkFn(ctx context.Context, worker *Worker, workerInst int, task Task) Result {
 	t := task.(testingTask)
-	r := &testingResult{}
-
-	select {
-	case <-ctx.Done():
-		r.Err = ctx.Err()
-	case <-time.After(time.Duration(t.msec) * time.Millisecond):
-		if !t.success {
-			r.Err = testingError
-		}
-	}
-	return r
-}
-func testingWorkFnX(ctx context.Context, worker *Worker, workerInst int, task Task) Result {
-	t := task.(testingTask)
-	r := &testingResultX{
+	r := &testingResult{
 		Tid: t.taskid,
-		// Wid: string(worker.WorkerID),
+		Wid: string(worker.WorkerID),
 	}
 
 	select {
@@ -81,18 +62,6 @@ func testingWorkFnX(ctx context.Context, worker *Worker, workerInst int, task Ta
 	return r
 }
 
-// testingWorkerTasks creates a WorkerTasks object from a map
-//    workerId -> [testingTask1, testingTask2, ...]
-// It is useful to shorten the test case declaration
-// from
-//    workersTasks: WorkerTasks{
-//	      "w1": Tasks{
-//		      testingTask{"t3", 30, true},
-//		      testingTask{"t2", 20, true},
-//		      testingTask{"t1", 10, false}}}
-// to
-//    input: {
-//	      "w1": {{"t3", 30, true}, {"t2", 20, true},{"t1", 10, false}}}
 func testingWorkerTasks(wts map[string]testingTasks) WorkerTasks {
 
 	wtasks := WorkerTasks{}
