@@ -294,8 +294,8 @@ func TestEngine_Execute_FirstSuccessOrLastResult(t *testing.T) {
 		"all ko": {
 			input: map[string]testingTasks{
 				"w1": {{"t3", 30, false}, {"t2", 20, false}, {"t1", 10, false}},
-				"w2": {{"t3", 20, false}, {"t2", 10, false}},
-				"w3": {{"t3", 10, false}},
+				"w2": {{"t3", 20, false}, {"t2", 14, false}},
+				"w3": {{"t3", 18, false}},
 			},
 			expected: []testingResultX{
 				{"t1", testingError}, // w1
