@@ -103,5 +103,5 @@ func (ev *Event) IsResultUntilFirstSuccess() bool {
 // IsResult return true if the event has a not nil result
 // i.e. not a start event
 func (ev *Event) IsResult() bool {
-	return (ev != nil) || (ev.Result != nil)
+	return (ev != nil) && (ev.Result != nil)
 }
