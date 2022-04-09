@@ -35,19 +35,23 @@ const (
 	// Multiple success results can be returned.
 	AllResults Mode = iota
 
-	// For each task returns only one result:
-	// the first success or the last result.
-	FirstSuccessOrLastResult
-
-	// For each task returns the results until the first success:
-	// after the first success the other requests are cancelled and not returned.
-	// At most one success is returned.
-	UntilFirstSuccess
-
 	// For each task returns the success or error results.
 	// The canceled resuts are not returned.
 	// Multiple success results can be returned.
-	SuccessOrError
+	SuccessOrErrorResults
+
+	// For each task returns the results preceding the first success (included).
+	// If a task can be handled by two or more workers, only the first success
+	// result is returned. After the first success (if exists) the remaining
+	// job for same task are cancelled and not returned.
+	// At most one success is returned.
+	ResultsUntilFirstSuccess
+
+	// For each task returns only one result: the first success or the last result.
+	// If a task can be handled by two or more workers, only the first success
+	// result is returned. After the first success (if exists) the remaining
+	// job for same task are cancelled and not returned.
+	FirstSuccessOrLastResult
 )
 
 // Engine contains the workers and the tasks of each worker.
@@ -146,9 +150,9 @@ func (eng *Engine) Execute(mode Mode) (chan Result, error) {
 	switch mode {
 	case FirstSuccessOrLastResult:
 		exportResult = func(e Event) bool { return e.IsFirstSuccessOrLastResult() }
-	case UntilFirstSuccess:
+	case ResultsUntilFirstSuccess:
 		exportResult = func(e Event) bool { return e.IsResultUntilFirstSuccess() }
-	case SuccessOrError:
+	case SuccessOrErrorResults:
 		exportResult = func(e Event) bool { return e.IsSuccessOrError() }
 	default:
 		exportResult = func(e Event) bool { return e.IsResult() }

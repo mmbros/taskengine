@@ -30,17 +30,31 @@ the workers results for the input tasks.
 
 The `Mode` enum type represents the mode of execution:
 
-- `FirstSuccessOrLastError`: for each task it returns only one result:
-  the first success or the last error. If a task can be handled by two
-  or more workers, only the first success result is returned.
-  The remaining job for same task are cancelled.
+- `AllResults`:
+  for each task returns the result of all the workers:  
+  success, error or canceled.
+  After the first success (if exists) the remaining
+  job for same task are cancelled and not returned.
+  Multiple success results can be returned if they happen at the same time.
 
-- `FirstSuccessThenCancel`: for each task it returns the error results
-  preceding the first success and the first success. The remaining job
-  for the same task are cancelled.
+- `SuccessOrErrorResults`:
+  for each task returns the success or error results.
+  The canceled resuts are not returned.
+  After the first success (if exists) the remaining
+  job for same task are cancelled and not returned.
+  Multiple success results can be returned if they happen at the same time.
 
-- `All`: for each task returns the result of all the workers.
-  Multiple success results can be returned.
+- `ResultsUntilFirstSuccess`:
+  for each task returns the results preceding the first success (included).
+  After the first success (if exists) the remaining
+  job for same task are cancelled and not returned.
+  At most one success is returned.
+
+- `FirstSuccessOrLastResult`:
+  For each task returns only one result: the first success or the last result.
+  After the first success (if exists) the remaining
+  job for same task are cancelled and not returned.
+  At most one success is returned.
 
 ## Task
 
@@ -68,17 +82,23 @@ concurrently different tasks assign to the worker.
         Work      WorkFunc   // The work function
     }
 
-The `WorkFunc` receives in input a `context`, the instance number of the
-worker and the `Task`, and returns an object that meets the `Result` interface.
+The `WorkFunc` receives in input a `context`, the `*Worker` and the instance
+number of the worker and the `Task`, and returns an object that meets the
+`Result` interface.
 
-    type WorkFunc func(context.Context, int, Task) Result
+    type WorkFunc func(context.Context, *Worker, int, Task) Result
 
-The `Result` interface has only the `Success` method that must returns true
-in case of success and false otherwise.
+The `Result` interface has only the `Error` method.
 
     type Result interface {
-        Success() bool
+        Error() error
     }
+
+The returned error is used to determine the status of the task execution as follow:
+
+- Success:  error is nil
+- Canceled: error is context.Canceled
+- Error:    otherwise
 
 ## WorkerTasks
 

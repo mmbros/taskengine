@@ -450,7 +450,7 @@ func TestEngine_Execute_UntilFirstSuccess(t *testing.T) {
 		},
 	}
 
-	mode := UntilFirstSuccess
+	mode := ResultsUntilFirstSuccess
 	ctx := context.Background()
 	copts := cmp.Options{cmp.Comparer(comparerTestingResult)}
 
@@ -516,7 +516,7 @@ func TestEngine_Execute_IsSuccessOrError(t *testing.T) {
 		},
 	}
 
-	mode := SuccessOrError
+	mode := SuccessOrErrorResults
 	ctx := context.Background()
 	copts := cmp.Options{cmp.Comparer(comparerTestingResult)}
 
