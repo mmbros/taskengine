@@ -103,3 +103,94 @@ func TestTasks_remove(t *testing.T) {
 		})
 	}
 }
+
+func TestGolang_ListOfPointer(t *testing.T) {
+
+	t1 := &testingTask{"t1", 11, true}
+	t2 := &testingTask{"t2", 12, true}
+
+	tasks := []*testingTask{t1, t2}
+
+	if t1 != tasks[0] {
+		t.Errorf("Pointer: tasks[0]:%p  != t1:%p", tasks[0], t1)
+	}
+}
+
+func TestGolang_ListOfStruct(t *testing.T) {
+	t1 := testingTask{"t1", 11, true}
+	t2 := testingTask{"t2", 12, true}
+
+	// the item of the list are copied
+	tasks := []testingTask{t1, t2}
+
+	// if you change the list item, the original item remain unchanged
+	tasks[0].taskid = "new"
+
+	want := "t1"
+	if t1.taskid != want {
+		t.Errorf("t1.taskid: want %q, got %s", want, t1.taskid)
+	}
+
+	want = "new"
+	if tasks[0].taskid != want {
+		t.Errorf("tasks[0].taskid: want %q, got %s", want, tasks[0].taskid)
+	}
+}
+
+func TestGolang_ListOfInterface(t *testing.T) {
+	t1 := Task(testingTask{"t1", 11, true})
+	t2 := Task(testingTask{"t2", 12, true})
+
+	// the item of the list are copied
+	tasks := []Task{t1, t2}
+
+	// if you change the list item, the original item remain unchanged
+	task0 := tasks[0].(testingTask)
+
+	task0.taskid = "new"
+
+	want := "t1"
+	if t1.(testingTask).taskid != want {
+		t.Errorf("t1.taskid: want %q, got %s", want, t1.(testingTask).taskid)
+	}
+
+	want = "new"
+	if task0.taskid != want {
+		t.Errorf("task0.taskid: want %q, got %s", want, task0.taskid)
+	}
+
+	want = "t1"
+	got := tasks[0].(testingTask).taskid
+	if got != want {
+		t.Errorf("tasks[0].(testingTask).taskid: want %q, got %s", want, got)
+	}
+}
+
+func TestGolang_ListOfInterfacePointer(t *testing.T) {
+	t1 := Task(&testingTask{"t1", 11, true})
+	t2 := Task(&testingTask{"t2", 12, true})
+
+	// the item of the list are copied
+	tasks := []Task{t1, t2}
+
+	// if you change the list item, the original item remain change
+	task0 := tasks[0].(*testingTask)
+
+	task0.taskid = "new"
+
+	want := "new"
+	if t1.(*testingTask).taskid != want {
+		t.Errorf("t1.taskid: want %q, got %s", want, t1.(*testingTask).taskid)
+	}
+
+	want = "new"
+	if task0.taskid != want {
+		t.Errorf("task0.taskid: want %q, got %s", want, task0.taskid)
+	}
+
+	want = "new"
+	got := tasks[0].(*testingTask).taskid
+	if got != want {
+		t.Errorf("tasks[0].(testingTask).taskid: want %q, got %s", want, got)
+	}
+}
