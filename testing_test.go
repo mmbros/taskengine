@@ -29,6 +29,8 @@ type testingResult struct {
 	Err error
 }
 
+type testingResultsGroup []testingResult
+
 func (tr testingResult) Error() error { return tr.Err }
 
 func comparerTestingResult(x, y testingResult) bool {
@@ -129,6 +131,55 @@ func testingEventsDiff(want []testingEventsGroup, events []Event) string {
 	if curr < tot {
 		wantGroup := testingEventsGroup(nil)
 		gotGroup := testingEventsGroup(got[curr:])
+		return cmp.Diff(wantGroup, gotGroup, copts)
+	}
+
+	return ""
+}
+
+// testingResultsDiff is like testingEventsDiff but for results.
+func testingResultsDiff(want []testingResultsGroup, got []testingResult) string {
+
+	// lessFunc for testingResult
+	lessFunc := func(x, y testingResult) bool {
+
+		if (x.Wid == y.Wid) && (x.Tid == y.Tid) {
+			// check error
+			var xe, ye string
+			if x.Err != nil {
+				xe = x.Err.Error()
+			}
+			if y.Err != nil {
+				ye = y.Err.Error()
+			}
+			return xe < ye
+		}
+
+		return (x.Wid < y.Wid) ||
+			((x.Wid == y.Wid) && (x.Tid < y.Tid))
+	}
+	copts := cmp.Options{cmpopts.SortSlices(lessFunc), cmpopts.EquateErrors()}
+
+	// compare each wantGroup with the corrisponding gotGroup
+	// The gotGroup contains the same number of element of the wantGroup (if possible)
+	// starting from the first not already used element
+	curr := 0
+	tot := len(got)
+	for _, wantGroup := range want {
+		L := len(wantGroup)
+		if curr+L > tot {
+			L = tot - curr
+		}
+
+		gotGroup := testingResultsGroup(got[curr : curr+L])
+		if diff := cmp.Diff(wantGroup, gotGroup, copts); diff != "" {
+			return diff
+		}
+		curr += L
+	}
+	if curr < tot {
+		wantGroup := testingResultsGroup(nil)
+		gotGroup := testingResultsGroup(got[curr:])
 		return cmp.Diff(wantGroup, gotGroup, copts)
 	}
 

@@ -546,7 +546,7 @@ func TestEngine_Execute_AllResults(t *testing.T) {
 
 	tests := map[string]struct {
 		input    map[string]testingTasks
-		expected []testingResult
+		expected []testingResultsGroup
 	}{
 		"all ok": {
 			input: map[string]testingTasks{
@@ -555,10 +555,9 @@ func TestEngine_Execute_AllResults(t *testing.T) {
 				"w3": {{"t1", 10, true}},
 				"w4": {},
 			},
-			expected: []testingResult{
-				{"w3", "t1", nil},
-				{"w2", "t1", context.Canceled},
-				{"w1", "t1", context.Canceled},
+			expected: []testingResultsGroup{
+				{{"w3", "t1", nil}},
+				{{"w1", "t1", context.Canceled}, {"w2", "t1", context.Canceled}},
 			},
 		},
 		"first in error": {
@@ -567,29 +566,27 @@ func TestEngine_Execute_AllResults(t *testing.T) {
 				"w2": {{"t1", 20, true}},
 				"w3": {{"t1", 10, false}},
 			},
-			expected: []testingResult{
-				{"w3", "t1", testingError},
-				{"w2", "t1", nil},
-				{"w1", "t1", context.Canceled},
+			expected: []testingResultsGroup{
+				{{"w3", "t1", testingError}},
+				{{"w2", "t1", nil}},
+				{{"w1", "t1", context.Canceled}},
 			},
 		},
-		// "last in error but canceled": {
-		// 	input: map[string]testingTasks{
-		// 		"w1": {{"t1", 10, true}},
-		// 		"w2": {{"t1", 20, true}},
-		// 		"w3": {{"t1", 30, false}},
-		// 	},
-		// 	expected: []testingResultX{
-		// 		{"w1", "t1", nil},
-		// 		{"w2", "t1", context.Canceled}, // same time
-		// 		{"w3", "t1", context.Canceled}, // same time
-		// 	},
-		// },
+		"last in error but canceled": {
+			input: map[string]testingTasks{
+				"w1": {{"t1", 10, true}},
+				"w2": {{"t1", 20, true}},
+				"w3": {{"t1", 30, false}},
+			},
+			expected: []testingResultsGroup{
+				{{"w1", "t1", nil}},
+				{{"w2", "t1", context.Canceled}, {"w3", "t1", context.Canceled}},
+			},
+		},
 	}
 
 	mode := AllResults
 	ctx := context.Background()
-	copts := cmp.Options{cmp.Comparer(comparerTestingResult)}
 
 	for title, tt := range tests {
 		t.Run(title, func(t *testing.T) {
@@ -597,10 +594,9 @@ func TestEngine_Execute_AllResults(t *testing.T) {
 			out := mustExecute(ctx, workers, wts, mode)
 			results := []testingResult{}
 			for res := range out {
-				tres := res.(*testingResult)
-				results = append(results, *tres)
+				results = append(results, *res.(*testingResult))
 			}
-			if diff := cmp.Diff(tt.expected, results, copts); diff != "" {
+			if diff := testingResultsDiff(tt.expected, results); diff != "" {
 				t.Errorf("mismatch (-want +got):\n%s", diff)
 			}
 		})
