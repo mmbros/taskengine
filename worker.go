@@ -81,6 +81,7 @@ func (wts WorkerTasks) Clone() WorkerTasks {
 
 // remove removes the i-th task of the list.
 // It returns the removed task.
+// NOTE: DO NOT preserve the order of the items in the list.
 // WARN: doen not check the i-th task exists!
 func (ts *Tasks) remove(i int) Task {
 	t := (*ts)[i]

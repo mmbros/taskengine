@@ -20,6 +20,10 @@ type testingTask struct {
 
 func (tt testingTask) TaskID() TaskID { return TaskID(tt.taskid) }
 
+func comparerTestingTask(x, y testingTask) bool {
+	return (x.msec == y.msec) && (x.taskid == y.taskid) && (x.success == y.success)
+}
+
 // testingTasks is an array of testingTask
 type testingTasks []testingTask
 
@@ -64,16 +68,17 @@ func testingWorkFn(ctx context.Context, worker *Worker, workerInst int, task Tas
 	return r
 }
 
+func testingTasksToTasks(tts testingTasks) Tasks {
+	tasks := Tasks{}
+	for _, tt := range tts {
+		tasks = append(tasks, tt)
+	}
+	return tasks
+}
 func testingWorkerTasks(wts map[string]testingTasks) WorkerTasks {
-
 	wtasks := WorkerTasks{}
-
 	for wid, tcts := range wts {
-		ts := Tasks{}
-		for _, tct := range tcts {
-			ts = append(ts, tct)
-		}
-		wtasks[WorkerID(wid)] = ts
+		wtasks[WorkerID(wid)] = testingTasksToTasks(tcts)
 	}
 	return wtasks
 }
