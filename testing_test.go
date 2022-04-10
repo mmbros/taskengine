@@ -18,14 +18,14 @@ type testingTask struct {
 	success bool   // task result
 }
 
-func (tt testingTask) TaskID() TaskID { return TaskID(tt.taskid) }
+func (tt *testingTask) TaskID() TaskID { return TaskID(tt.taskid) }
 
 func comparerTestingTask(x, y testingTask) bool {
 	return (x.msec == y.msec) && (x.taskid == y.taskid) && (x.success == y.success)
 }
 
 // testingTasks is an array of testingTask
-type testingTasks []testingTask
+type testingTasks []*testingTask
 
 type testingResult struct {
 	Wid string
@@ -51,7 +51,7 @@ type testingEvent struct {
 type testingEventsGroup []testingEvent
 
 func testingWorkFn(ctx context.Context, worker *Worker, workerInst int, task Task) Result {
-	t := task.(testingTask)
+	t := task.(*testingTask)
 	r := &testingResult{
 		Tid: t.taskid,
 		Wid: string(worker.WorkerID),

@@ -41,45 +41,45 @@ func TestWorkerTasks_Clone(t *testing.T) {
 
 func TestTasks_remove(t *testing.T) {
 
-	t1 := testingTask{"t1", 11, true}
-	t2 := testingTask{"t2", 12, true}
-	t3 := testingTask{"t3", 13, false}
-	t4 := testingTask{"t4", 14, false}
+	t1 := &testingTask{"t1", 11, true}
+	t2 := &testingTask{"t2", 12, true}
+	t3 := &testingTask{"t3", 13, false}
+	t4 := &testingTask{"t4", 14, false}
 
 	tests := []struct {
 		name      string
-		input     testingTasks
+		tasks     Tasks
 		idx       int
-		wantTask  testingTask
-		wantTasks testingTasks
+		wantTask  Task
+		wantTasks Tasks
 	}{
 		{
 			name:      "remove first",
-			input:     testingTasks{t1, t2, t3, t4},
+			tasks:     Tasks{t1, t2, t3, t4},
 			idx:       0,
 			wantTask:  t1,
-			wantTasks: testingTasks{t4, t2, t3},
+			wantTasks: Tasks{t4, t2, t3},
 		},
 		{
 			name:      "remove second",
-			input:     testingTasks{t1, t2, t3, t4},
+			tasks:     Tasks{t1, t2, t3, t4},
 			idx:       1,
 			wantTask:  t2,
-			wantTasks: testingTasks{t1, t4, t3},
+			wantTasks: Tasks{t1, t4, t3},
 		},
 		{
 			name:      "remove third",
-			input:     testingTasks{t1, t2, t3, t4},
+			tasks:     Tasks{t1, t2, t3, t4},
 			idx:       2,
 			wantTask:  t3,
-			wantTasks: testingTasks{t1, t2, t4},
+			wantTasks: Tasks{t1, t2, t4},
 		},
 		{
 			name:      "remove last",
-			input:     testingTasks{t1, t2, t3, t4},
+			tasks:     Tasks{t1, t2, t3, t4},
 			idx:       3,
 			wantTask:  t4,
-			wantTasks: testingTasks{t1, t2, t3},
+			wantTasks: Tasks{t1, t2, t3},
 		},
 	}
 
@@ -87,17 +87,14 @@ func TestTasks_remove(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tasks := testingTasksToTasks(tt.input)
 
-			task := tasks.remove(tt.idx)
+			gotTask := tt.tasks.remove(tt.idx)
+			gotTasks := tt.tasks
 
-			got := task.(testingTask)
-			wantTasks := testingTasksToTasks(tt.wantTasks)
-
-			if diff := cmp.Diff(tt.wantTask, got, copts); diff != "" {
+			if diff := cmp.Diff(tt.wantTask, gotTask, copts); diff != "" {
 				t.Errorf("Tasks.remove() mismatch task (-want +got):\n%s", diff)
 			}
-			if diff := cmp.Diff(wantTasks, tasks, copts); diff != "" {
+			if diff := cmp.Diff(tt.wantTasks, gotTasks, copts); diff != "" {
 				t.Errorf("Tasks.remove() mismatch tasks (-want +got):\n%s", diff)
 			}
 		})
@@ -138,20 +135,21 @@ func TestGolang_ListOfStruct(t *testing.T) {
 }
 
 func TestGolang_ListOfInterface(t *testing.T) {
-	t1 := Task(testingTask{"t1", 11, true})
-	t2 := Task(testingTask{"t2", 12, true})
+	t1 := Task(&testingTask{"t1", 11, true})
+	t2 := Task(&testingTask{"t2", 12, true})
 
 	// the item of the list are copied
 	tasks := []Task{t1, t2}
 
 	// if you change the list item, the original item remain unchanged
-	task0 := tasks[0].(testingTask)
+	task0 := tasks[0].(*testingTask)
 
 	task0.taskid = "new"
 
-	want := "t1"
-	if t1.(testingTask).taskid != want {
-		t.Errorf("t1.taskid: want %q, got %s", want, t1.(testingTask).taskid)
+	// want := "t1"  // correct if Task = testingTask
+	want := "new" // correct if Task = *testingTask
+	if t1.(*testingTask).taskid != want {
+		t.Errorf("t1.taskid: want %q, got %s", want, t1.(*testingTask).taskid)
 	}
 
 	want = "new"
@@ -159,8 +157,9 @@ func TestGolang_ListOfInterface(t *testing.T) {
 		t.Errorf("task0.taskid: want %q, got %s", want, task0.taskid)
 	}
 
-	want = "t1"
-	got := tasks[0].(testingTask).taskid
+	// want = "t1"  // correct if Task = testingTask
+	want = "new" // correct if Task = *testingTask
+	got := tasks[0].(*testingTask).taskid
 	if got != want {
 		t.Errorf("tasks[0].(testingTask).taskid: want %q, got %s", want, got)
 	}
