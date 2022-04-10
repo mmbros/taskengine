@@ -602,3 +602,158 @@ func TestEngine_Execute_AllResults(t *testing.T) {
 		})
 	}
 }
+
+func TestEngine_Execute_Mode(t *testing.T) {
+	/*
+		The mode values `SuccessOrErrorResults` e `ResultsUntilFirstSuccess` are *almost* the same
+		when engine always cancel remaining jobs after the first success.
+		`ResultsUntilFirstSuccess` guarantees only one success is returned.
+		`SuccessOrErrorResults` can return more success if they are simultaneous.
+	*/
+	workers := []*Worker{
+		{"w1", 1, testingWorkFn},
+		{"w2", 1, testingWorkFn},
+		{"w3", 1, testingWorkFn},
+		{"w4", 1, testingWorkFn},
+	}
+
+	input := map[string]testingTasks{
+		"w1": {{"t1", 10, false}},
+		"w2": {{"t1", 20, true}},
+		"w3": {{"t1", 30, true}},
+		"w4": {{"t1", 40, false}},
+	}
+
+	tests := []struct {
+		name     string
+		mode     Mode
+		expected []testingResultsGroup
+	}{
+		{
+			name: "AllResults",
+			mode: AllResults,
+			expected: []testingResultsGroup{
+				{{"w1", "t1", testingError}},
+				{{"w2", "t1", nil}},
+				{{"w3", "t1", context.Canceled}, {"w4", "t1", context.Canceled}},
+			},
+		},
+		{
+			name: "SuccessOrErrorResults",
+			mode: SuccessOrErrorResults,
+			expected: []testingResultsGroup{
+				{{"w1", "t1", testingError}},
+				{{"w2", "t1", nil}},
+			},
+		},
+		{
+			name: "ResultsUntilFirstSuccess",
+			mode: ResultsUntilFirstSuccess,
+			expected: []testingResultsGroup{
+				{{"w1", "t1", testingError}},
+				{{"w2", "t1", nil}},
+			},
+		},
+		{
+			name: "FirstSuccessOrLastResult",
+			mode: FirstSuccessOrLastResult,
+			expected: []testingResultsGroup{
+				{{"w2", "t1", nil}},
+			},
+		},
+	}
+
+	ctx := context.Background()
+	wts := testingWorkerTasks(input)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := mustExecute(ctx, workers, wts, tt.mode)
+			results := []testingResult{}
+			for res := range out {
+				results = append(results, *res.(*testingResult))
+			}
+			if diff := testingResultsDiff(tt.expected, results); diff != "" {
+				t.Errorf("mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestEngine_Execute_Mode_ConcurrentSuccess(t *testing.T) {
+	/*
+	   checks that for FirstSuccess modes only one success result is returned
+	   even in case of concurrent successes.
+
+	   NOTE: coversely, in these scenario, the not FirstSuccess modes
+	         can give multiple success results
+	*/
+	workers := []*Worker{
+		{"w0", 1, testingWorkFn},
+		{"w1", 1, testingWorkFn},
+	}
+
+	input := map[string]testingTasks{
+		"w0": {{"t0", 5, true}},
+		"w1": {{"t0", 5, true}},
+	}
+
+	ctx := context.Background()
+	wts := testingWorkerTasks(input)
+
+	const totIter int = 100
+
+	// records is an array mode x result
+	// result value means:
+
+	//     (w0,  w1 )
+	//  0: (err, err)
+	//  1: (ok,  err)
+	//  2: (err, ok )
+	//  3: (ok,  ok )
+	var records [4][4]int
+
+	for mode := 0; mode < 4; mode++ {
+
+		for n := 0; n < totIter; n++ {
+			var ok0, ok1 bool
+			out := mustExecute(ctx, workers, wts, Mode(mode))
+			for res := range out {
+				tr := res.(*testingResult)
+				if tr.Wid == "w0" {
+					ok0 = (tr.Err == nil) // w0
+				} else {
+					ok1 = (tr.Err == nil) // w1
+				}
+			}
+			idx := 0
+			if ok0 {
+				idx += 1
+			}
+			if ok1 {
+				idx += 2
+			}
+			records[mode][idx] += 1
+		}
+	}
+
+	// checks no (err,err) results is found
+	for n := 0; n < 4; n++ {
+		if records[n][0] > 0 {
+			t.Errorf("Unexpected (err,err) results with %d mode!", n)
+		}
+	}
+
+	if records[FirstSuccessOrLastResult][3] > 0 {
+		t.Errorf("Unexpected (ok,ok) results with FirstSuccessOrLastResult=%d mode!", FirstSuccessOrLastResult)
+	}
+
+	if records[ResultsUntilFirstSuccess][3] > 0 {
+		t.Errorf("Unexpected (ok,ok) results with ResultsUntilFirstSuccess=%d mode!", ResultsUntilFirstSuccess)
+	}
+
+	if t.Failed() {
+		t.Log(records)
+	}
+
+}
