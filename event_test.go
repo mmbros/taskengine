@@ -120,48 +120,48 @@ func TestEvent_FirstSuccessOrLastError(t *testing.T) {
 		{
 			name: "first success",
 			event: &Event{
-				Result: testingResult{},
-				Stat:   TaskStat{10, 20, 5, 1},
+				Result:   testingResult{},
+				TaskStat: TaskStat{10, 20, 5, 1},
 			},
 			want: true,
 		},
 		{
 			name: "second success",
 			event: &Event{
-				Result: testingResult{},
-				Stat:   TaskStat{10, 20, 5, 2},
+				Result:   testingResult{},
+				TaskStat: TaskStat{10, 20, 5, 2},
 			},
 			want: false,
 		},
 		{
 			name: "last error and no success",
 			event: &Event{
-				Result: testingResult{Err: testingError},
-				Stat:   TaskStat{0, 0, 5, 0},
+				Result:   testingResult{Err: testingError},
+				TaskStat: TaskStat{0, 0, 5, 0},
 			},
 			want: true,
 		},
 		{
 			name: "last error with previous success",
 			event: &Event{
-				Result: testingResult{Err: testingError},
-				Stat:   TaskStat{0, 0, 5, 1},
+				Result:   testingResult{Err: testingError},
+				TaskStat: TaskStat{0, 0, 5, 1},
 			},
 			want: false,
 		},
 		{
 			name: "not last error - todo",
 			event: &Event{
-				Result: testingResult{Err: testingError},
-				Stat:   TaskStat{1, 0, 5, 0},
+				Result:   testingResult{Err: testingError},
+				TaskStat: TaskStat{1, 0, 5, 0},
 			},
 			want: false,
 		},
 		{
 			name: "not last error - doing",
 			event: &Event{
-				Result: testingResult{Err: testingError},
-				Stat:   TaskStat{0, 1, 5, 0},
+				Result:   testingResult{Err: testingError},
+				TaskStat: TaskStat{0, 1, 5, 0},
 			},
 			want: false,
 		},

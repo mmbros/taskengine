@@ -105,7 +105,7 @@ func TestNewEngine(t *testing.T) {
 func TestEngine_ExecuteEvent_NilEngine(t *testing.T) {
 	var eng *Engine
 	errmsg := "nil engine"
-	_, err := eng.ExecuteEvent()
+	_, err := eng.ExecuteEvents()
 	if err == nil {
 		t.Errorf("expecting error, got no error")
 	} else if err.Error() != errmsg {
@@ -227,15 +227,15 @@ func TestEngine_ExecuteEvent(t *testing.T) {
 				t.Errorf("newEngine: unexpected error: %s", err)
 			}
 
-			eventc, err := eng.ExecuteEvent()
+			eventc, err := eng.ExecuteEvents()
 			if err != nil {
 				t.Errorf("ExecuteEvent: unexpected error: %s", err)
 			}
 
 			got := []Event{}
-			for ev := range eventc {
-				t.Log(ev)
-				got = append(got, ev)
+			for evt := range eventc {
+				t.Log(evt)
+				got = append(got, *evt)
 			}
 
 			if diff := testingEventsDiff(tt.want, got); diff != "" {

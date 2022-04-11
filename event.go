@@ -17,6 +17,7 @@ const (
 	EventCanceled
 )
 
+// String representation of an EventType.
 func (t EventType) String() string {
 	if t < EventNil || t > EventCanceled {
 		return "Invalid"
@@ -31,67 +32,71 @@ func (t EventType) String() string {
 	return strings[t]
 }
 
-// Event
+// Event type contains the informations of the task execution.
+// Events objects are emitted by the engine.ExecuteEvents method.
+// For each (worker, task) pair, it is emitted a Start event
+// followeb by a final event that can be a Success, Canceled or Error event.
+// The event.Type() method returns the type of event.
 type Event struct {
-	// Type   EventType
-	Task           Task
-	Worker         Worker
-	Inst           int
-	Result         Result // nil for Start event
-	Stat           TaskStat
-	Timestamp      time.Time
-	TimestampStart time.Time
+	Result     Result // nil for Start event
+	WorkerID   WorkerID
+	WorkerInst int
+	Task       Task
+	TaskStat   TaskStat
+	TimeStart  time.Time
+	TimeEnd    time.Time // same as TimeStart for Start event
 }
 
-func (ev Event) String() string {
+// String returns a representation of an event.
+func (e *Event) String() string {
 	return fmt.Sprintf("%s[%d] %s%v %s",
-		ev.Worker.WorkerID, ev.Inst,
-		ev.Task.TaskID(), ev.Stat,
-		ev.Type())
+		e.WorkerID, e.WorkerInst,
+		e.Task.TaskID(), e.TaskStat,
+		e.Type())
 }
 
-func (ev *Event) Type() EventType {
-	if ev == nil {
+// Type method returns the type of Event.
+func (e *Event) Type() EventType {
+	// TODO: maybe EventCanceled must consider context.DeadlineExceeded error also.
+	if e == nil {
 		return EventNil
 	}
-	if ev.Result == nil {
+	if e.Result == nil {
 		return EventStart
 	}
-	if ev.Result.Error() == nil {
+	if e.Result.Error() == nil {
 		return EventSuccess
 	}
-	if errors.Is(ev.Result.Error(), context.Canceled) {
+	if errors.Is(e.Result.Error(), context.Canceled) {
 		return EventCanceled
 	}
 	return EventError
 }
 
-// IsFirstSuccessOrLastResult return true if is is a result and:
-// - it is the first success, or
-// - it is the last result and no success was found
-func (ev *Event) IsFirstSuccessOrLastResult() bool {
-	if (ev == nil) || (ev.Result == nil) {
+// IsFirstSuccessOrLastResult returns true if it is the first success result
+// or it is the last result and no success was previously found.
+func (e *Event) IsFirstSuccessOrLastResult() bool {
+	if !e.IsResult() {
 		return false
 	}
-	stat := &ev.Stat
-	if ev.Result.Error() == nil {
+	stat := &e.TaskStat
+	if e.Result.Error() == nil {
 		// first success
 		return stat.Success == 1
 	} else {
-		// completed (no more workers) and no success was found
+		// last results and no success was found
 		return stat.Todo == 0 && stat.Doing == 0 && stat.Success == 0
 	}
 }
 
-// IsResultUntilFirstSuccess return true if it is a result and:
-// - it is the first success, or
-// - it is not a success and no success was previously found
-func (ev *Event) IsResultUntilFirstSuccess() bool {
-	if (ev == nil) || (ev.Result == nil) {
+// IsResultUntilFirstSuccess returns true for all the results
+// until the first success (included).
+func (e *Event) IsResultUntilFirstSuccess() bool {
+	if !e.IsResult() {
 		return false
 	}
-	stat := &ev.Stat
-	if ev.Result.Error() == nil {
+	stat := &e.TaskStat
+	if e.Result.Error() == nil {
 		// first success
 		return stat.Success == 1
 	} else {
@@ -100,19 +105,19 @@ func (ev *Event) IsResultUntilFirstSuccess() bool {
 	}
 }
 
-// IsSuccessOrError return true if it is a result and
+// IsSuccessOrError returns true if it is a result and
 // it is a success or an error result.
-// Return false in case of canceled event.
-func (ev *Event) IsSuccessOrError() bool {
-	if (ev == nil) || (ev.Result == nil) {
+// Return false in case of canceled result.
+func (e *Event) IsSuccessOrError() bool {
+	if !e.IsResult() {
 		return false
 	}
-	err := ev.Result.Error()
+	err := e.Result.Error()
 	return !errors.Is(err, context.Canceled)
 }
 
 // IsResult return true if the event has a not nil result
-// i.e. not a start event
-func (ev *Event) IsResult() bool {
-	return (ev != nil) && (ev.Result != nil)
+// i.e. not a start event.
+func (e *Event) IsResult() bool {
+	return (e != nil) && (e.Result != nil)
 }

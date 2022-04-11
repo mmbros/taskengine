@@ -39,11 +39,8 @@ type Result interface {
 	Error() error
 }
 
-// WorkFunc is the worker function.
-// - context: the context
-// - Worker:  the worker that execute the task
-// - int:     the instance of the worker
-// - Task:    the task to be executed
+// WorkFunc is the worker function to execute a given task.
+// The int parameter represents the worker instance.
 type WorkFunc func(context.Context, *Worker, int, Task) Result
 
 // Worker is the unit (identified by WorkerID)

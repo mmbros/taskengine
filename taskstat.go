@@ -2,7 +2,8 @@ package taskengine
 
 import "fmt"
 
-// TaskStat type is used to dynamically choose the next task to work
+// TaskStat type object tracks the number of workers dealing with the task.
+// It is used to dynamically choose the next task to execute.
 type TaskStat struct {
 	Todo    int // how many workers have to do the task.
 	Doing   int // how many workers are doing the task.

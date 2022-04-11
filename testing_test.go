@@ -101,7 +101,7 @@ func testingEventsDiff(want []testingEventsGroup, events []Event) string {
 	got := []testingEvent{}
 	for _, event := range events {
 		te := testingEvent{
-			Wid:   string(event.Worker.WorkerID),
+			Wid:   string(event.WorkerID),
 			Tid:   string(event.Task.TaskID()),
 			Etype: event.Type(),
 		}
