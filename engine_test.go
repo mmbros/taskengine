@@ -8,16 +8,10 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestNewEngine_NilContext(t *testing.T) {
-	var ctx context.Context
-	_, err := NewEngine(ctx, nil, nil)
-	if err == nil {
-		t.Errorf("Expecting error, got no error")
-	} else {
-		errmsg := "nil context"
-		if err.Error() != errmsg {
-			t.Errorf("Expecting error %q, got %q", errmsg, err)
-		}
+func TestNewEngine_NilParams(t *testing.T) {
+	_, err := NewEngine(nil, nil)
+	if err != nil {
+		t.Errorf("unexpeced error: %v", err)
 	}
 }
 
@@ -79,12 +73,11 @@ func TestNewEngine(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 
 			wts := testingWorkerTasks(tt.input)
-			_, err := NewEngine(ctx, tt.workers, wts)
+			_, err := NewEngine(tt.workers, wts)
 
 			if tt.err == nil {
 				if err != nil {
@@ -105,13 +98,25 @@ func TestNewEngine(t *testing.T) {
 func TestEngine_ExecuteEvent_NilEngine(t *testing.T) {
 	var eng *Engine
 	errmsg := "nil engine"
-	_, err := eng.ExecuteEvents()
+	_, err := eng.ExecuteEvents(nil)
 	if err == nil {
 		t.Errorf("expecting error, got no error")
 	} else if err.Error() != errmsg {
 		t.Errorf("expecting error %q, got error %q", errmsg, err)
 	}
 }
+
+func TestEngine_ExecuteEvent_NilContext(t *testing.T) {
+	eng, _ := NewEngine(nil, nil)
+	errmsg := "nil context"
+	_, err := eng.ExecuteEvents(nil)
+	if err == nil {
+		t.Errorf("expecting error, got no error")
+	} else if err.Error() != errmsg {
+		t.Errorf("expecting error %q, got error %q", errmsg, err)
+	}
+}
+
 func TestEngine_ExecuteEvent(t *testing.T) {
 
 	tests := []struct {
@@ -221,13 +226,13 @@ func TestEngine_ExecuteEvent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			wts := testingWorkerTasks(tt.input)
-			eng, err := NewEngine(ctx, tt.workers, wts)
+			eng, err := NewEngine(tt.workers, wts)
 
 			if err != nil {
 				t.Errorf("newEngine: unexpected error: %s", err)
 			}
 
-			eventc, err := eng.ExecuteEvents()
+			eventc, err := eng.ExecuteEvents(ctx)
 			if err != nil {
 				t.Errorf("ExecuteEvent: unexpected error: %s", err)
 			}
@@ -248,7 +253,18 @@ func TestEngine_ExecuteEvent(t *testing.T) {
 func TestEngine_Execute_NilEngine(t *testing.T) {
 	var eng *Engine
 	errmsg := "nil engine"
-	_, err := eng.Execute(AllResults)
+	_, err := eng.Execute(nil, AllResults)
+	if err == nil {
+		t.Errorf("expecting error, got no error")
+	} else if err.Error() != errmsg {
+		t.Errorf("expecting error %q, got error %q", errmsg, err)
+	}
+}
+
+func TestEngine_Execute_NilContext(t *testing.T) {
+	eng, _ := NewEngine(nil, nil)
+	errmsg := "nil context"
+	_, err := eng.Execute(nil, AllResults)
 	if err == nil {
 		t.Errorf("expecting error, got no error")
 	} else if err.Error() != errmsg {
