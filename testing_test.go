@@ -192,11 +192,11 @@ func testingResultsDiff(want []testingResultsGroup, got []testingResult) string 
 }
 
 func mustExecute(ctx context.Context, workers []*Worker, wts WorkerTasks, mode Mode) chan Result {
-	eng, err := NewEngine(ctx, workers, wts)
+	eng, err := NewEngine(workers, wts)
 	if err != nil {
 		panic("NewEngine:" + err.Error())
 	}
-	out, err := eng.Execute(mode)
+	out, err := eng.Execute(ctx, mode)
 	if err != nil {
 		panic("Execute:" + err.Error())
 	}
