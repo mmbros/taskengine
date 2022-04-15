@@ -31,6 +31,10 @@ type Task interface {
 
 // Result is the interface that must be matched by the output of the Work function.
 type Result interface {
+
+	// String representation of the Result.
+	String() string
+
 	// The error returned by the Work function.
 	// It is used to determine the status of the task execution as follow
 	//    Success:  error is nil
