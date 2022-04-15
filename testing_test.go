@@ -35,6 +35,16 @@ type testingResult struct {
 
 type testingResultsGroup []testingResult
 
+func (tr testingResult) String() string {
+	if tr.Err == nil {
+		return "SUCCESS"
+	}
+	if errors.Is(tr.Err, context.Canceled) {
+		return "CANCELED"
+	}
+	return "ERROR"
+}
+
 func (tr testingResult) Error() error { return tr.Err }
 
 func comparerTestingResult(x, y testingResult) bool {
