@@ -2,6 +2,7 @@ package taskengine
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -20,16 +21,21 @@ const (
 // String representation of an EventType.
 func (t EventType) String() string {
 	if t < EventNil || t > EventCanceled {
-		return "Invalid"
+		return "invalid"
 	}
 	strings := []string{
-		"Nil",
-		"Start",
-		"Success",
-		"Error",
-		"Canceled",
+		"nil",
+		"start",
+		"success",
+		"error",
+		"canceled",
 	}
 	return strings[t]
+}
+
+// MarshalJSON returns the json representation of the EventType
+func (t EventType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.String())
 }
 
 // Event type contains the informations of the task execution.

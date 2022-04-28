@@ -2,6 +2,7 @@ package taskengine
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 )
 
@@ -14,37 +15,37 @@ func TestEventType_String(t *testing.T) {
 		{
 			name:  "nil",
 			etype: EventNil,
-			want:  "Nil",
+			want:  "nil",
 		},
 		{
 			name:  "start",
 			etype: EventStart,
-			want:  "Start",
+			want:  "start",
 		},
 		{
 			name:  "Success",
 			etype: EventSuccess,
-			want:  "Success",
+			want:  "success",
 		},
 		{
 			name:  "Canceled",
 			etype: EventCanceled,
-			want:  "Canceled",
+			want:  "canceled",
 		},
 		{
 			name:  "Error",
 			etype: EventError,
-			want:  "Error",
+			want:  "error",
 		},
 		{
 			name:  "Invalid < 0",
 			etype: -1,
-			want:  "Invalid",
+			want:  "invalid",
 		},
 		{
 			name:  "Invalid > 0",
 			etype: 100,
-			want:  "Invalid",
+			want:  "invalid",
 		},
 	}
 
@@ -53,6 +54,64 @@ func TestEventType_String(t *testing.T) {
 			got := tt.etype.String()
 			if got != tt.want {
 				t.Errorf("want %q, got %q", tt.want, got)
+			}
+		})
+	}
+}
+
+func TestEventType_MarshalJSON(t *testing.T) {
+	tests := []struct {
+		name  string
+		etype EventType
+		want  string
+	}{
+		{
+			name:  "nil",
+			etype: EventNil,
+			want:  "nil",
+		},
+		{
+			name:  "start",
+			etype: EventStart,
+			want:  "start",
+		},
+		{
+			name:  "Success",
+			etype: EventSuccess,
+			want:  "success",
+		},
+		{
+			name:  "Canceled",
+			etype: EventCanceled,
+			want:  "canceled",
+		},
+		{
+			name:  "Error",
+			etype: EventError,
+			want:  "error",
+		},
+		{
+			name:  "Invalid < 0",
+			etype: -1,
+			want:  "invalid",
+		},
+		{
+			name:  "Invalid > 0",
+			etype: 100,
+			want:  "invalid",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := json.Marshal(tt.etype)
+			if err != nil {
+				t.Errorf("unexpected error %v", err)
+			}
+			sgot := string(got)
+			swant := "\"" + tt.want + "\""
+			if sgot != swant {
+				t.Errorf("want %q, got %q", swant, sgot)
 			}
 		})
 	}
