@@ -75,8 +75,8 @@ func (e *Event) Type() EventType {
 
 // IsFirstSuccessOrLastResult returns true if it is the first success result
 // or it is the last result and no success was previously found.
-func (e *Event) IsFirstSuccessOrLastResult() bool {
-	if !e.IsResult() {
+func IsFirstSuccessOrLastResult(e *Event) bool {
+	if !IsResult(e) {
 		return false
 	}
 	stat := &e.TaskStat
@@ -91,8 +91,8 @@ func (e *Event) IsFirstSuccessOrLastResult() bool {
 
 // IsResultUntilFirstSuccess returns true for all the results
 // until the first success (included).
-func (e *Event) IsResultUntilFirstSuccess() bool {
-	if !e.IsResult() {
+func IsResultUntilFirstSuccess(e *Event) bool {
+	if !IsResult(e) {
 		return false
 	}
 	stat := &e.TaskStat
@@ -108,8 +108,8 @@ func (e *Event) IsResultUntilFirstSuccess() bool {
 // IsSuccessOrError returns true if it is a result and
 // it is a success or an error result.
 // Return false in case of canceled result.
-func (e *Event) IsSuccessOrError() bool {
-	if !e.IsResult() {
+func IsSuccessOrError(e *Event) bool {
+	if !IsResult(e) {
 		return false
 	}
 	err := e.Result.Error()
@@ -118,6 +118,6 @@ func (e *Event) IsSuccessOrError() bool {
 
 // IsResult return true if the event has a not nil result
 // i.e. not a start event.
-func (e *Event) IsResult() bool {
+func IsResult(e *Event) bool {
 	return (e != nil) && (e.Result != nil)
 }
